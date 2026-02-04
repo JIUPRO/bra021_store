@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Backend .NET
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: loja-backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=89.117.48.134,1433;Database=MV_LojaBra021_Dev;User Id=mavifm;Password=#MasterKey10;TrustServerCertificate=True;
+      - EmailSettings__SmtpServer=email-ssl.com.br
+      - EmailSettings__Port=587
+      - EmailSettings__EnableSsl=true
+      - EmailSettings__Username=contato@rlm.dev.br
+      - EmailSettings__Password=@Rlm#100
+      - EmailSettings__FromEmail=contato@rlm.dev.br
+      - EmailSettings__ToEmail=
+      - WhatsAppSettings__ApiUrl=
+      - WhatsAppSettings__ApiKey=
+      - WhatsAppSettings__PhoneNumber=
+    ports:
+      - "5000:8080"
+      - "5001:443"
+    networks:
+      - loja-network
+    # Não fazer bind-mount do diretório do projeto no container runtime,
+    # isso sobrescreveria os arquivos publicados gerados pela imagem.
+
+  # Frontend (Loja Virtual)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: loja-frontend
+    ports:
+      - "4200:4200"
+    environment:
+      - API_URL=http://backend:8080
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - loja-network
+    command: ng serve --host 0.0.0.0 --port 4200 --poll 2000
+
+  # Backoffice (Administração)
+  backoffice:
+    build:
+      context: ./backoffice
+      dockerfile: Dockerfile
+    container_name: loja-backoffice
+    ports:
+      - "4201:4200"
+    environment:
+      - API_URL=http://backend:8080
+    volumes:
+      - ./backoffice:/app
+      - /app/node_modules
+    networks:
+      - loja-network
+    command: ng serve --host 0.0.0.0 --port 4200 --poll 2000
+
+networks:
+  loja-network:
+    driver: bridge

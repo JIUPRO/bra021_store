@@ -1,0 +1,281 @@
+/* Estilos do Backoffice */
+
+:root {
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 70px;
+  --header-height: 80px;
+  --cor-primaria: #10b981; /* Verde loja */
+  --cor-primaria-claro: #4ade80; /* Verde claro */
+  --cor-accent: #059669; /* Verde escuro */
+  --cor-menu-bg: #059669; /* Verde do logo (menu) */
+  --cor-agua: #536586; /* Azul acinzentado */
+  --cor-secundaria: #868F89; /* Cinza médio */
+  --cor-clara: #FEFEFE;
+  --cor-clara-2: #BCC8C2;
+  --cor-escura: #363A39;
+  --cor-perigo: #dc3545;
+  --cor-sidebar: #10b981;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f6fa;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--cor-sidebar);
+  color: white;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.sidebar-header h4 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.sidebar-header small {
+  opacity: 0.7;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+.sidebar-menu li {
+  margin: 5px 0;
+}
+
+.sidebar-menu a {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: var(--cor-primaria);
+}
+
+.sidebar-menu i {
+  font-size: 1.2rem;
+  margin-right: 12px;
+  width: 24px;
+  text-align: center;
+}
+
+/* Main Content */
+.main-content {
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  transition: all 0.3s ease;
+}
+
+/* Header */
+.top-header {
+  height: var(--header-height);
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cor-escura);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-actions .btn {
+  border: none;
+  background: transparent;
+  color: var(--cor-secundaria);
+  font-size: 1.2rem;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.header-actions .btn:hover {
+  background: #f0f0f0;
+  color: var(--cor-primaria);
+}
+
+/* Content Area */
+.content-area {
+  padding: 24px;
+}
+
+/* Cards */
+.card-dashboard {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.card-dashboard:hover {
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+}
+
+.card-stats {
+  padding: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.card-stats-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-right: 16px;
+}
+
+.card-stats-info h3 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.card-stats-info p {
+  margin: 0;
+  color: var(--cor-secundaria);
+  font-size: 0.9rem;
+}
+
+/* Tabelas */
+.table-backoffice {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.table-backoffice thead {
+  background: #f8f9fa;
+}
+
+.table-backoffice th {
+  font-weight: 600;
+  color: var(--cor-escura);
+  border: none;
+  padding: 16px;
+}
+
+.table-backoffice td {
+  padding: 16px;
+  vertical-align: middle;
+}
+
+/* Botões */
+.btn-acao {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-acao:hover {
+  transform: translateY(-2px);
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Formulários */
+.form-backoffice .form-label {
+  font-weight: 500;
+  color: var(--cor-escura);
+}
+
+.form-backoffice .form-control,
+.form-backoffice .form-select {
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 12px 16px;
+}
+
+.form-backoffice .form-control:focus,
+.form-backoffice .form-select:focus {
+  border-color: var(--cor-primaria);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+/* Loading */
+.spinner-backoffice {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--cor-primaria);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

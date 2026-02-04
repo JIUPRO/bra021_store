@@ -1,0 +1,193 @@
+/* Estilos globais da Loja Virtual */
+
+:root {
+  --cor-primaria: #2F6A49; /* Verde escuro */
+  --cor-primaria-claro: #8EAD41; /* Verde claro */
+  --cor-accent: #F5F53B; /* Amarelo vivo */
+  --cor-agua: #536586; /* Azul acinzentado */
+  --cor-secundaria: #868F89; /* Cinza médio */
+  --cor-clara: #FEFEFE; /* Branco fundo */
+  --cor-clara-2: #BCC8C2; /* Cinza claro */
+  --cor-escura: #363A39; /* Preto/cinza muito escuro */
+  --cor-perigo: #dc3545;
+}
+
+/* Override Bootstrap primary to use brand green */
+.text-primary {
+  color: var(--cor-primaria) !important;
+}
+
+.bg-primary {
+  background-color: var(--cor-primaria) !important;
+  color: var(--cor-clara) !important;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--cor-primaria), var(--cor-primaria-claro)) !important;
+  border-color: var(--cor-primaria) !important;
+  color: var(--cor-clara) !important;
+}
+
+.btn-outline-primary {
+  color: var(--cor-primaria) !important;
+  border-color: var(--cor-primaria) !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--cor-primaria) !important;
+  color: var(--cor-clara) !important;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--cor-clara);
+  min-height: 100vh;
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Cards de produto */
+.card-produto {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+}
+
+.card-produto:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.card-produto .imagem-produto {
+  height: 200px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.card-produto:hover .imagem-produto {
+  transform: scale(1.05);
+}
+
+/* Preços */
+.preco-original {
+  text-decoration: line-through;
+  color: var(--cor-secundaria);
+  font-size: 0.9rem;
+}
+
+.preco-promocional {
+  color: var(--cor-perigo);
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.preco-normal {
+  color: var(--cor-primaria);
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+/* Botões */
+.btn-primario {
+  background: linear-gradient(135deg, var(--cor-primaria), var(--cor-primaria-claro));
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  color: var(--cor-escura);
+}
+
+.btn-primario:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(47, 106, 73, 0.18);
+}
+
+/* Navbar */
+.navbar-loja {
+  background: linear-gradient(135deg, var(--cor-primaria), var(--cor-primaria-claro));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.navbar-loja .nav-link {
+  color: white !important;
+  font-weight: 500;
+  transition: opacity 0.3s ease;
+}
+
+.navbar-loja .nav-link:hover {
+  opacity: 0.8;
+}
+
+/* Carrinho */
+.badge-carrinho {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: var(--cor-perigo);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .card-produto .imagem-produto {
+    height: 150px;
+  }
+  
+  .preco-promocional,
+  .preco-normal {
+    font-size: 1rem;
+  }
+}
+
+/* Loading spinner */
+.spinner-loja {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid var(--cor-primaria);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Footer */
+.footer-loja {
+  background-color: var(--cor-escura);
+  color: white;
+  padding: 3rem 0;
+  margin-top: auto;
+}
