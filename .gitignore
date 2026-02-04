@@ -45,3 +45,7 @@ Thumbs.db
 # Misc
 *.tmp
 *.temp
+
+# Local history/cleanup
+.history/
+limpar-pedidos.sql
