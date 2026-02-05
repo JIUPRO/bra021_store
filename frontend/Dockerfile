@@ -12,7 +12,7 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Build de produção
-RUN npm run build -- --configuration production
+RUN npx ng build --configuration production
 
 FROM nginx:alpine
 
