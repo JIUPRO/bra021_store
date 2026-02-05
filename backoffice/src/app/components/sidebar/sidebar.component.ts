@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-sidebar',
@@ -83,7 +84,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
       </ul>
       
       <div class="sidebar-footer">
-        <a href="http://localhost:4200" target="_blank">
+        <a [href]="lojaUrl" target="_blank">
           <i class="bi bi-box-arrow-up-right"></i>
           <span>Ver Loja</span>
         </a>
@@ -210,4 +211,15 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
     }
   `]
 })
-export class SidebarComponent {}
+export class SidebarComponent {
+  lojaUrl = this.getLojaUrl();
+
+  private getLojaUrl(): string {
+    // Se está em produção, usa a URL de produção da loja
+    // Se está em desenvolvimento, usa localhost:4200
+    if (environment.production) {
+      return 'https://www.bra021store.rlm.dev.br';
+    }
+    return 'http://localhost:4200';
+  }
+}
