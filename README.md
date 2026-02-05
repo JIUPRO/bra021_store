@@ -1,299 +1,163 @@
-# Loja Virtual - Sistema Completo de E-commerce
+# 🛒 Loja Brazil 021 - E-commerce de Jiu-Jitsu
 
-Sistema completo de e-commerce com Frontend Angular, Backend .NET e Backoffice Administrativo.
+Sistema completo de e-commerce especializado em produtos de Jiu-Jitsu, com integração ao MercadoPago e sistema de gestão administrativa.
 
-## 🏗️ Arquitetura do Sistema
+## 🏗️ Arquitetura
 
 ```
-loja-virtual/
-├── backend/                  # API .NET 8
-│   ├── LojaVirtual.Dominio/      # Entidades e Interfaces
-│   ├── LojaVirtual.Aplicacao/    # DTOs, Serviços e Mapeamentos
-│   ├── LojaVirtual.Infraestrutura/ # EF Core, Repositórios, Notificações
-│   └── LojaVirtual.API/          # Controllers e Configuração
-├── frontend/                 # Loja Virtual (Angular 17)
-└── backoffice/              # Painel Administrativo (Angular 17)
+loja-brazil-021/
+├── backend/              # API .NET 8
+├── frontend/             # Loja Virtual (Angular 17)
+└── backoffice/          # Painel Administrativo (Angular 17)
 ```
 
-## 🚀 Tecnologias Utilizadas
+## 🚀 Stack Tecnológica
 
 ### Backend
-- **.NET 8** - Framework principal
-- **Entity Framework Core 8** - ORM para acesso a dados
+- **.NET 8** - API RESTful
+- **Entity Framework Core** - ORM
 - **SQL Server** - Banco de dados
-- **AutoMapper** - Mapeamento de objetos
-- **MailKit/MimeKit** - Envio de emails
-- **Arquitetura em Camadas** - Domain, Application, Infrastructure, API
+- **MercadoPago SDK** - Pagamentos
 
 ### Frontend
 - **Angular 17** - Framework SPA
-- **Bootstrap 5** - Framework CSS
-- **Bootstrap Icons** - Ícones
-- **Standalone Components** - Componentes standalone
-- **RxJS** - Programação reativa
-
-### Infraestrutura
-- **Docker** - Containerização
-- **Docker Compose** - Orquestração de containers
+- **Bootstrap 5** - UI/UX
+- **Standalone Components**
 
 ## 📋 Pré-requisitos
 
-- Docker e Docker Compose instalados
-- VS Code (recomendado)
-- Extensão Docker para VS Code (opcional)
+- **Docker** e **Docker Compose**
+- **Node.js 20+** (desenvolvimento local)
+- **.NET 8 SDK** (desenvolvimento local)
 
-## 🛠️ Configuração Inicial
+## 🛠️ Instalação e Execução
 
-### 1. Clone ou extraia o projeto
+### Desenvolvimento Local
 
+1. **Clone o repositório**
 ```bash
-cd loja-virtual
+git clone https://github.com/JIUPRO/bra021_store.git
+cd bra021_store
 ```
 
-### 2. Configure as variáveis de ambiente (opcional)
+2. **Configure as variáveis de ambiente**
 
-Edite o arquivo `docker-compose.yml` para configurar:
-- Senha do SQL Server
-- Configurações de email (SMTP)
-- Configurações de WhatsApp (API)
+Copie o arquivo de exemplo e preencha com suas credenciais:
+```bash
+cp .env.example .env
+```
 
-### 3. Inicie os containers
+Edite o `.env` com suas configurações de banco, SMTP, etc.
 
+3. **Inicie os containers**
 ```bash
 docker-compose up -d
 ```
 
-Este comando irá:
-- Baixar as imagens necessárias
-- Compilar o backend .NET
-- Compilar os frontends Angular
-- Iniciar o SQL Server
-- Executar as migrations
-- Iniciar todos os serviços
-
-### 4. Acesse as aplicações
-
-| Aplicação | URL | Descrição |
-|-----------|-----|-----------|
-| Loja Virtual | http://localhost:4200 | Frontend da loja |
-| Backoffice | http://localhost:4201 | Painel administrativo |
-| API | http://localhost:5000 | Backend API |
-| Swagger | http://localhost:5000/swagger | Documentação da API |
-
-## 📁 Estrutura do Backend
-
-### Entidades (Dominio)
-- **Produto** - Produtos da loja
-- **Categoria** - Categorias de produtos
-- **Cliente** - Clientes cadastrados
-- **Pedido** - Pedidos de venda
-- **ItemPedido** - Itens de cada pedido
-- **MovimentacaoEstoque** - Controle de estoque
-
-### Serviços (Aplicacao)
-- **ServicoProduto** - Gestão de produtos
-- **ServicoCategoria** - Gestão de categorias
-- **ServicoCliente** - Gestão de clientes
-- **ServicoPedido** - Gestão de pedidos
-- **ServicoEstoque** - Controle de estoque
-
-### Notificações (Infraestrutura)
-- **Email** - Notificações por email (SMTP)
-- **WhatsApp** - Notificações por WhatsApp (API)
+4. **Acesse as aplicações**
+- **Loja Virtual**: http://localhost:4200
+- **Backoffice**: http://localhost:4201
+- **API**: http://localhost:5000
+- **Swagger**: http://localhost:5000/swagger
 
 ## 🔧 Comandos Úteis
 
-### Docker Compose
-
 ```bash
-# Iniciar todos os serviços
-docker-compose up -d
-
-# Parar todos os serviços
+# Parar containers
 docker-compose down
 
 # Ver logs
 docker-compose logs -f
 
-# Rebuildar containers
+# Rebuild
 docker-compose up -d --build
-
-# Executar migrations manualmente
-docker-compose exec backend dotnet ef database update
-```
-
-### Backend (.NET)
-
-```bash
-cd backend/LojaVirtual.API
-
-# Executar localmente (fora do Docker)
-dotnet run
-
-# Criar nova migration
-dotnet ef migrations add NomeMigration -p ../LojaVirtual.Infraestrutura -s .
-
-# Atualizar banco de dados
-dotnet ef database update
-```
-
-### Frontend (Angular)
-
-```bash
-cd frontend
-
-# Instalar dependências
-npm install
-
-# Executar localmente
-ng serve
-
-# Build de produção
-ng build --configuration production
 ```
 
 ## 📱 Funcionalidades
 
-### Loja Virtual (Frontend)
-- ✅ Listagem de produtos
-- ✅ Produtos em destaque
-- ✅ Filtro por categoria
-- ✅ Pesquisa de produtos
+### Loja Virtual
+- ✅ Catálogo de produtos por categoria
 - ✅ Carrinho de compras
-- ✅ Checkout
-- ✅ Cadastro de clientes
-- ✅ Login/Autenticação
+- ✅ Integração MercadoPago
+- ✅ Área do cliente
 - ✅ Histórico de pedidos
-- ✅ Design responsivo (mobile/desktop)
 
-### Backoffice (Administração)
+### Backoffice
 - ✅ Dashboard com estatísticas
-- ✅ Gestão de produtos (CRUD)
-- ✅ Gestão de categorias
-- ✅ Gestão de pedidos
+- ✅ Gestão de produtos e categorias
+- ✅ Gestão de pedidos e clientes
 - ✅ Controle de estoque
-- ✅ Gestão de clientes
-- ✅ Relatórios
+- ✅ Relatórios de vendas
 
-### Backend (API)
+### API
 - ✅ RESTful API
-- ✅ Autenticação
-- ✅ CRUD completo
-- ✅ Controle de estoque
+- ✅ Autenticação JWT
+- ✅ Integração MercadoPago
 - ✅ Notificações por email
-- ✅ Notificações por WhatsApp
-- ✅ Migrations automáticas
-
-## 🔔 Notificações
-
-### Configuração de Email
-
-Edite o `appsettings.json` do backend:
-
-```json
-"EmailSettings": {
-  "SmtpServer": "smtp.gmail.com",
-  "Port": 587,
-  "Username": "seu-email@gmail.com",
-  "Password": "sua-senha-app",
-  "FromEmail": "seu-email@gmail.com",
-  "ToEmail": "admin@loja.com"
-}
-```
-
-### Configuração de WhatsApp
-
-Edite o `appsettings.json` do backend:
-
-```json
-"WhatsAppSettings": {
-  "ApiUrl": "https://api.whatsapp.com/v1/messages",
-  "ApiKey": "sua-chave-api",
-  "PhoneNumber": "5511999999999"
-}
-```
-
-**Nota:** Para testes sem integração real, o sistema simula o envio no console.
-
-## 🗄️ Banco de Dados
-
-### SQL Server no Docker
-
-- **Servidor**: `localhost,1433`
-- **Banco**: `LojaVirtual`
-- **Usuário**: `sa`
-- **Senha**: `SenhaForte123!` (configurável no docker-compose.yml)
-
-### Conexão String
-
-```
-Server=localhost,1433;Database=LojaVirtual;User Id=sa;Password=SenhaForte123!;TrustServerCertificate=True;
-```
+- ✅ Controle transacional
 
 ## 🔒 Segurança
 
-- Senhas armazenadas com hash SHA256
-- CORS configurado para permitir requisições do frontend
-- Validação de dados nas APIs
-- Transações para operações críticas
+- ⚠️ **Nunca commite o arquivo `.env`**
+- ⚠️ **Use variáveis de ambiente em produção**
+- ✅ Senhas hasheadas
+- ✅ CORS configurado
+- ✅ Validação de dados
 
-## 🐛 Troubleshooting
+## 🚀 Deploy em Produção
 
-### Problema: SQL Server não inicia
+### Docker Swarm + Portainer
 
-```bash
-# Verificar logs
-docker-compose logs sqlserver
+As imagens são automaticamente geradas pelo GitHub Actions e publicadas no GHCR:
 
-# Verificar se a porta 1433 está livia
-netstat -an | grep 1433
+```yaml
+# Exemplo de Stack no Portainer
+services:
+  api:
+    image: ghcr.io/jiupro/bra021_store-backend:latest
+    environment:
+      ConnectionStrings__DefaultConnection: ${DB_CONNECTION_STRING}
+      EmailSettings__SmtpServer: ${SMTP_SERVER}
+      # ... outras variáveis
 ```
 
-### Problema: Migrations não executam
-
-```bash
-# Executar manualmente
-docker-compose exec backend dotnet ef database update --project /src/LojaVirtual.Infraestrutura --startup-project /src/LojaVirtual.API
-```
-
-### Problema: Frontend não carrega
-
-```bash
-# Verificar logs
-docker-compose logs frontend
-
-# Rebuildar
-docker-compose up -d --build frontend
-```
+**Configure as variáveis de ambiente no Portainer** antes de fazer o deploy.
 
 ## 📚 Documentação da API
 
-Acesse o Swagger UI em: http://localhost:5000/swagger
+Acesse o Swagger em: `/swagger`
 
 ### Endpoints Principais
-
-| Endpoint | Descrição |
-|----------|-----------|
-| GET /api/produtos | Listar produtos |
-| GET /api/produtos/destaques | Produtos em destaque |
-| POST /api/pedidos | Criar pedido |
-| GET /api/pedidos | Listar pedidos |
-| GET /api/clientes | Listar clientes |
-| POST /api/clientes/login | Autenticar cliente |
-
-## 📝 Licença
-
-Este projeto é apenas para fins educacionais e demonstração.
+- `GET /api/produtos` - Listar produtos
+- `POST /api/pedidos` - Criar pedido
+- `POST /api/clientes/login` - Autenticar
 
 ## 👨‍💻 Desenvolvimento
 
-Para desenvolvimento local sem Docker:
+### Backend
+```bash
+cd backend/LojaVirtual.API
+dotnet run
+```
 
-1. Inicie o SQL Server
-2. Execute o backend: `cd backend/LojaVirtual.API && dotnet run`
-3. Execute o frontend: `cd frontend && ng serve`
-4. Execute o backoffice: `cd backoffice && ng serve --port 4201`
+### Frontend
+```bash
+cd frontend
+npm install
+ng serve
+```
+
+### Backoffice
+```bash
+cd backoffice
+npm install
+ng serve --port 4201
+```
+
+## 📝 Licença
+
+Projeto privado - Todos os direitos reservados.
 
 ---
 
-**Desenvolvido com ❤️ usando Angular + .NET**
+**Desenvolvido para Brazil 021 Store**

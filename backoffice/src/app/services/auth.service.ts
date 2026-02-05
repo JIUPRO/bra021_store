@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface Usuario {
   id: string;
@@ -30,7 +31,7 @@ export interface CadastroRequest {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:5000/api/auth';
+  private apiUrl = `${environment.apiUrl}/auth`;
   private usuarioSubject = new BehaviorSubject<Usuario | null>(this.obterUsuarioArmazenado());
   public usuario$ = this.usuarioSubject.asObservable();
 

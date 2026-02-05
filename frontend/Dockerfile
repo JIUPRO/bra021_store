@@ -1,9 +1,6 @@
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
 WORKDIR /app
-
-# Instalar Angular CLI globalmente
-RUN npm install -g @angular/cli@17
 
 # Copiar package.json e package-lock.json
 COPY package*.json ./
@@ -14,8 +11,14 @@ RUN npm install --legacy-peer-deps
 # Copiar o restante do código
 COPY . .
 
-# Expor a porta
-EXPOSE 4200
+# Build de produção
+RUN npx ng build --configuration production
 
-# Comando para iniciar o servidor de desenvolvimento
-CMD ["ng", "serve", "--host", "0.0.0.0", "--port", "4200", "--poll", "2000"]
+FROM nginx:alpine
+
+# Copiar build para o Nginx
+COPY --from=build /app/dist/loja-virtual-frontend /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

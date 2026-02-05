@@ -9,17 +9,20 @@ services:
     container_name: loja-backend
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=89.117.48.134,1433;Database=MV_LojaBra021_Dev;User Id=mavifm;Password=#MasterKey10;TrustServerCertificate=True;
-      - EmailSettings__SmtpServer=email-ssl.com.br
-      - EmailSettings__Port=587
-      - EmailSettings__EnableSsl=true
-      - EmailSettings__Username=contato@rlm.dev.br
-      - EmailSettings__Password=@Rlm#100
-      - EmailSettings__FromEmail=contato@rlm.dev.br
+      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - EmailSettings__SmtpServer=${SMTP_SERVER}
+      - EmailSettings__Port=${SMTP_PORT}
+      - EmailSettings__EnableSsl=${SMTP_ENABLE_SSL}
+      - EmailSettings__Username=${SMTP_USERNAME}
+      - EmailSettings__Password=${SMTP_PASSWORD}
+      - EmailSettings__FromEmail=${SMTP_FROM_EMAIL}
       - EmailSettings__ToEmail=
-      - WhatsAppSettings__ApiUrl=
-      - WhatsAppSettings__ApiKey=
-      - WhatsAppSettings__PhoneNumber=
+      - WhatsAppSettings__ApiUrl=${WHATSAPP_API_URL}
+      - WhatsAppSettings__ApiKey=${WHATSAPP_API_KEY}
+      - WhatsAppSettings__PhoneNumber=${WHATSAPP_PHONE_NUMBER}
+      - MercadoPago__AccessToken=${MERCADO_PAGO_ACCESS_TOKEN}
+      - MercadoPago__PublicKey=${MERCADO_PAGO_PUBLIC_KEY}
     ports:
       - "5000:8080"
       - "5001:443"
@@ -32,7 +35,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: loja-frontend
     ports:
       - "4200:4200"
@@ -43,13 +46,12 @@ services:
       - /app/node_modules
     networks:
       - loja-network
-    command: ng serve --host 0.0.0.0 --port 4200 --poll 2000
 
   # Backoffice (Administração)
   backoffice:
     build:
       context: ./backoffice
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: loja-backoffice
     ports:
       - "4201:4200"
@@ -60,7 +62,6 @@ services:
       - /app/node_modules
     networks:
       - loja-network
-    command: ng serve --host 0.0.0.0 --port 4200 --poll 2000
 
 networks:
   loja-network:
