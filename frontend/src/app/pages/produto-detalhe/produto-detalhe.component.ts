@@ -67,9 +67,9 @@ import { Produto, ProdutoVariacao } from '../../models/produto.model';
           <div class="row mb-4">
             <div class="col-6">
               <small class="text-muted d-block">Estoque</small>
-              <span [class]="estoqueBaixo ? 'text-danger' : 'text-success'">
-                <i class="bi" [class.bi-check-circle-fill]="!estoqueBaixo" [class.bi-exclamation-circle-fill]="estoqueBaixo"></i>
-                {{ produto.quantidadeEstoque }} unidades
+              <span [class]="estoqueDisponivelBaixo ? 'text-danger' : 'text-success'">
+                <i class="bi" [class.bi-check-circle-fill]="!estoqueDisponivelBaixo" [class.bi-exclamation-circle-fill]="estoqueDisponivelBaixo"></i>
+                {{ estoqueDisponivel }} unidades
               </span>
             </div>
           </div>
@@ -121,11 +121,19 @@ import { Produto, ProdutoVariacao } from '../../models/produto.model';
                 <button class="btn btn-outline-secondary" (click)="diminuirQuantidade()" [disabled]="quantidade <= 1">
                   <i class="bi bi-dash"></i>
                 </button>
-                <input type="number" class="form-control text-center" [(ngModel)]="quantidade" min="1" [max]="estoqueDisponivel">
+                <input 
+                  type="number" 
+                  class="form-control text-center" 
+                  [(ngModel)]="quantidade" 
+                  (change)="validarQuantidade()"
+                  min="1" 
+                  [max]="estoqueDisponivel"
+                >
                 <button class="btn btn-outline-secondary" (click)="aumentarQuantidade()" [disabled]="quantidade >= estoqueDisponivel">
                   <i class="bi bi-plus"></i>
                 </button>
               </div>
+              <small class="text-muted d-block mt-1">Máx: {{ estoqueDisponivel }} unidades</small>
             </div>
             <div class="col-8 col-md-9">
               <button 
@@ -339,6 +347,10 @@ export class ProdutoDetalheComponent implements OnInit {
     return (this.produto?.quantidadeEstoque || 0) <= (this.produto?.quantidadeMinimaEstoque || 0);
   }
 
+  get estoqueDisponivelBaixo(): boolean {
+    return this.estoqueDisponivel <= (this.produto?.quantidadeMinimaEstoque || 0);
+  }
+
   aumentarQuantidade(): void {
     if (this.quantidade < this.estoqueDisponivel) {
       this.quantidade++;
@@ -348,6 +360,15 @@ export class ProdutoDetalheComponent implements OnInit {
   diminuirQuantidade(): void {
     if (this.quantidade > 1) {
       this.quantidade--;
+    }
+  }
+
+  validarQuantidade(): void {
+    if (this.quantidade < 1) {
+      this.quantidade = 1;
+    }
+    if (this.quantidade > this.estoqueDisponivel) {
+      this.quantidade = this.estoqueDisponivel;
     }
   }
 
