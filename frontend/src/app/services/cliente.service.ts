@@ -31,24 +31,32 @@ export class ClienteService {
     }
   }
 
-  private salvarClienteLogado(cliente: Cliente | null): void {
+  private salvarClienteLogado(cliente: Cliente | null, token?: string): void {
     if (cliente) {
       sessionStorage.setItem('clienteLogado', JSON.stringify(cliente));
       // Token expira em 2 horas
       const expiracao = new Date().getTime() + (2 * 60 * 60 * 1000);
       sessionStorage.setItem('tokenExpiracao', expiracao.toString());
+      
+      // Salvar token JWT se fornecido
+      if (token) {
+        sessionStorage.setItem('token', token);
+      }
     } else {
       sessionStorage.removeItem('clienteLogado');
       sessionStorage.removeItem('tokenExpiracao');
+      sessionStorage.removeItem('token');
     }
     this.clienteLogadoSubject.next(cliente);
   }
 
   login(dados: LoginCliente): Observable<Cliente> {
     return new Observable(observer => {
-      this.api.post<Cliente>('clientes/login', dados).subscribe({
-        next: (cliente) => {
-          this.salvarClienteLogado(cliente);
+      this.api.post<any>('clientes/login', dados).subscribe({
+        next: (response) => {
+          const cliente = response.cliente;
+          const token = response.token;
+          this.salvarClienteLogado(cliente, token);
           observer.next(cliente);
           observer.complete();
         },

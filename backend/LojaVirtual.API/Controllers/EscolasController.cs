@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Aplicacao.Services;
 
@@ -15,6 +16,7 @@ namespace LojaVirtual.API.Controllers
 			_escolaService = servicoEscola;
 		}
 
+		[AllowAnonymous]
 		[HttpGet]
 		public async Task<ActionResult<IEnumerable<EscolaDTO>>> ObterTodas()
 		{
@@ -22,6 +24,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(escolas);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("ativas")]
 		public async Task<ActionResult<IEnumerable<EscolaDTO>>> ObterAtivas()
 		{
@@ -29,6 +32,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(escolas);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("{id}")]
 		public async Task<ActionResult<EscolaDTO>> ObterPorId(Guid id)
 		{
@@ -39,6 +43,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(escola);
 		}
 
+		[Authorize]
 		[HttpPost]
 		public async Task<ActionResult<EscolaDTO>> Criar([FromBody] CriarEscolaDTO dto)
 		{
@@ -53,6 +58,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpPut("{id}")]
 		public async Task<ActionResult<EscolaDTO>> Atualizar(Guid id, [FromBody] AtualizarEscolaDTO dto)
 		{
@@ -73,6 +79,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpDelete("{id}")]
 		public async Task<IActionResult> Remover(Guid id)
 		{

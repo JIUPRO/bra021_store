@@ -988,9 +988,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           };
         }
 
-        console.log('Enviando requisição de pagamento:', pagamentoRequest);
+        console.log('✅ Enviando requisição de pagamento:', pagamentoRequest);
         const pagamentoResponse = await firstValueFrom(this.pagamentoService.criarPagamento(pagamentoRequest));
-        console.log('Resposta do pagamento:', pagamentoResponse);
+        console.log('✅ Resposta do pagamento recebida:', pagamentoResponse);
+        console.log('📊 Status do pagamento:', {
+          sucesso: pagamentoResponse.sucesso,
+          status: pagamentoResponse.status,
+          metodoPagamento: this.metodoPagamento
+        });
 
         if (pagamentoResponse.sucesso) {
           // Se for PIX, mostrar QR Code
@@ -1044,13 +1049,23 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         // Pedido foi criado mas pagamento deu erro/exceção
         this.carrinhoService.limparCarrinho();
         this.processando = false;
-        console.error('Erro ao processar pagamento:', erroPagamento);
-        console.error('Detalhes do erro:', {
+        console.error('❌ ERRO AO PROCESSAR PAGAMENTO:', erroPagamento);
+        console.error('📋 Detalhes do erro:', {
           message: erroPagamento?.message,
           error: erroPagamento?.error,
           status: erroPagamento?.status,
-          statusText: erroPagamento?.statusText
+          statusText: erroPagamento?.statusText,
+          url: erroPagamento?.url,
+          headers: erroPagamento?.headers
         });
+        
+        // Log do objeto de erro completo
+        console.error('📦 Objeto erro completo:', erroPagamento);
+        
+        // Log da resposta do servidor (se houver)
+        if (erroPagamento?.error) {
+          console.error('🔴 Resposta do servidor:', JSON.stringify(erroPagamento.error, null, 2));
+        }
         
         this.alertService.warning(
           'Pedido realizado', 

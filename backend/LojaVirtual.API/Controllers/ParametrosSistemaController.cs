@@ -1,6 +1,7 @@
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Aplicacao.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LojaVirtual.API.Controllers
 {
@@ -15,6 +16,7 @@ namespace LojaVirtual.API.Controllers
 			_parametroSistemaService = servicoParametroSistema;
 		}
 
+		[AllowAnonymous]
 		[HttpGet]
 		public async Task<ActionResult<IEnumerable<ParametroSistemaDTO>>> ObterTodos()
 		{
@@ -22,6 +24,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(parametros);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("chave/{chave}")]
 		public async Task<ActionResult<ParametroSistemaDTO>> ObterPorChave(string chave)
 		{
@@ -45,6 +48,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(parametro);
 		}
 
+		[Authorize]
 		[HttpPost]
 		public async Task<ActionResult<ParametroSistemaDTO>> Criar([FromBody] CriarParametroSistemaDTO dto)
 		{
@@ -59,6 +63,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpPut("{id}")]
 		public async Task<ActionResult<ParametroSistemaDTO>> Atualizar(Guid id, [FromBody] AtualizarParametroSistemaDTO dto)
 		{

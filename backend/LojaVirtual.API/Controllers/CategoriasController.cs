@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Aplicacao.Services;
 
@@ -15,6 +16,7 @@ namespace LojaVirtual.API.Controllers
 			_categoriaService = servicoCategoria;
 		}
 
+		[AllowAnonymous]
 		[HttpGet]
 		public async Task<ActionResult<IEnumerable<CategoriaDTO>>> ObterTodas()
 		{
@@ -22,6 +24,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(categorias);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("{id}")]
 		public async Task<ActionResult<CategoriaDTO>> ObterPorId(Guid id)
 		{
@@ -32,6 +35,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(categoria);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("{id}/produtos")]
 		public async Task<ActionResult<CategoriaDTO>> ObterComProdutos(Guid id)
 		{
@@ -42,6 +46,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(categoria);
 		}
 
+		[Authorize]
 		[HttpPost]
 		public async Task<ActionResult<CategoriaDTO>> Criar([FromBody] CriarCategoriaDTO dto)
 		{
@@ -56,6 +61,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpPut("{id}")]
 		public async Task<ActionResult<CategoriaDTO>> Atualizar(Guid id, [FromBody] AtualizarCategoriaDTO dto)
 		{
@@ -76,6 +82,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpDelete("{id}")]
 		public async Task<IActionResult> Remover(Guid id)
 		{

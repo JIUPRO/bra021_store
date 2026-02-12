@@ -1,6 +1,7 @@
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Aplicacao.Servicos;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LojaVirtual.API.Controllers
 {
@@ -19,6 +20,7 @@ namespace LojaVirtual.API.Controllers
 			_logger = logger;
 		}
 
+		[AllowAnonymous]
 		[HttpPost("criar")]
 		public async Task<ActionResult<PagamentoResponseDTO>> CriarPagamento([FromBody] CriarPagamentoRequestDTO request)
 		{
@@ -26,7 +28,7 @@ namespace LojaVirtual.API.Controllers
 			{
 				if (request == null)
 				{
-					_logger.LogWarning("Pagamento request nulo recebido");
+					_logger.LogWarning("❌ Pagamento request nulo recebido");
 					return BadRequest(new PagamentoResponseDTO
 					{
 						Sucesso = false,
@@ -39,25 +41,35 @@ namespace LojaVirtual.API.Controllers
 				var hasToken = !string.IsNullOrWhiteSpace(request.DadosCartao?.CardToken);
 
 				_logger.LogInformation(
-					"Pagamento request recebido: PedidoId={PedidoId}, Metodo={Metodo}, HasToken={HasToken}, CardLast4={CardLast4}, CardholderName={CardholderName}",
+					"📝 PAGAMENTO RECEBIDO: PedidoId={PedidoId}, Metodo={Metodo}, HasToken={HasToken}, CardLast4={CardLast4}, CardholderName={CardholderName}",
 					request.PedidoId,
 					request.MetodoPagamento,
 					hasToken,
 					last4,
 					request.DadosCartao?.CardholderName);
 
+				_logger.LogInformation("🔄 Chamando serviço de pagamento com request: {@PagamentoRequest}", request);
+				
 				var resultado = await _servicoPagamento.CriarPagamentoAsync(request);
+
+				_logger.LogInformation("📊 Resultado do pagamento: Sucesso={Sucesso}, Status={Status}, Mensagem={Mensagem}", 
+					resultado.Sucesso, resultado.Status, resultado.Mensagem);
 
 				if (resultado.Sucesso)
 				{
+					_logger.LogInformation("✅ Pagamento processado com sucesso!");
 					return Ok(resultado);
 				}
 
+				_logger.LogWarning("⚠️ Pagamento falhou (não é exceção): {MensagemErro}", resultado.Mensagem);
 				return BadRequest(resultado);
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Erro ao criar pagamento");
+				_logger.LogError(ex, "❌ EXCEÇÃO AO CRIAR PAGAMENTO: {ExceptionMessage}", ex.Message);
+				_logger.LogError("📦 Stack trace: {StackTrace}", ex.StackTrace);
+				_logger.LogError("🔍 Inner exception: {InnerException}", ex.InnerException?.Message);
+				
 				return StatusCode(500, new PagamentoResponseDTO
 				{
 					Sucesso = false,
@@ -66,6 +78,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[AllowAnonymous]
 		[HttpPost("webhook")]
 		public async Task<IActionResult> ProcessarWebhook([FromBody] WebhookNotificacaoDTO notificacao)
 		{

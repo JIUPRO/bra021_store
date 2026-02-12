@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Infraestrutura.Data;
 using LojaVirtual.Dominio.Entidades;
@@ -17,6 +18,7 @@ namespace LojaVirtual.API.Controllers
 			_contexto = contexto;
 		}
 
+		[AllowAnonymous]
 		[HttpGet("produto/{produtoId}")]
 		public async Task<ActionResult<IEnumerable<ProdutoTamanhoDTOs.GetAll>>> GetByProdutoId(Guid produtoId)
 		{
@@ -37,6 +39,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(result);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("{id}")]
 		public async Task<ActionResult<ProdutoTamanhoDTOs.GetById>> GetById(Guid id)
 		{
@@ -56,6 +59,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(result);
 		}
 
+		[Authorize]
 		[HttpPost]
 		public async Task<ActionResult<ProdutoTamanhoDTOs.GetAll>> Create(ProdutoTamanhoDTOs.Create request)
 		{
@@ -89,6 +93,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpPut("{id}")]
 		public async Task<IActionResult> Update(Guid id, ProdutoTamanhoDTOs.Update request)
 		{

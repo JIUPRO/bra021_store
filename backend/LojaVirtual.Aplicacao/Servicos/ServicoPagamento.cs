@@ -94,16 +94,29 @@ namespace LojaVirtual.Aplicacao.Servicos
 		{
 			try
 			{
+				_logger.LogInformation("🚀 INICIANDO CRIAÇÃO DE PAGAMENTO");
+				_logger.LogInformation("📊 Request recebido: {@Request}", new {
+					PedidoId = request.PedidoId,
+					Metodo = request.MetodoPagamento,
+					Parcelas = request.Parcelas,
+					TemCartao = !string.IsNullOrEmpty(request.DadosCartao?.CardToken)
+				});
+				
 				// Validar request
 				var validacao = await ValidarRequisicaoPagamentoAsync(request);
 				if (!validacao.Sucesso)
+				{
+					_logger.LogWarning("⚠️ VALIDAÇÃO FALHOU: {Mensagem}", validacao.Mensagem);
 					return validacao;
+				}
 
 				// Buscar pedido usando Guid
+				_logger.LogInformation("🔍 Buscando pedido: {PedidoId}", request.PedidoId);
 				var pedido = await _unitOfWork.Pedidos.ObterComItensAsync(request.PedidoId);
 
 				if (pedido == null)
 				{
+					_logger.LogError("❌ PEDIDO NÃO ENCONTRADO: {PedidoId}", request.PedidoId);
 					return new PagamentoResponseDTO
 					{
 						Sucesso = false,
@@ -111,6 +124,9 @@ namespace LojaVirtual.Aplicacao.Servicos
 						CodigoErro = "PEDIDO_NAO_ENCONTRADO"
 					};
 				}
+
+				_logger.LogInformation("✅ Pedido encontrado: PedidoNum={NumPedido}, Valor={Valor}, Cliente={Email}", 
+					pedido.NumeroPedido, pedido.ValorTotal, pedido.Cliente?.Email);
 
 				// Calcular valor da parcela
 				var valorParcela = CalcularValorParcela(pedido.ValorTotal, request.Parcelas);
@@ -182,15 +198,17 @@ namespace LojaVirtual.Aplicacao.Servicos
 				var responseBody = await response.Content.ReadAsStringAsync();
 
 				_logger.LogInformation(
-					"📨 Mercado Pago response: Status={StatusCode}, Body={Response}",
+					"📨 Resposta Mercado Pago: Status={StatusCode}, Body={Response}",
 					(int)response.StatusCode,
 					responseBody);
 
 				if (response.IsSuccessStatusCode)
 				{
+					_logger.LogInformation("✅ Resposta de sucesso do Mercado Pago!");
 					var result = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(responseBody);
 					if (result == null)
 					{
+						_logger.LogError("❌ Resposta do Mercado Pago inválida/nula");
 						return new PagamentoResponseDTO
 						{
 							Sucesso = false,
@@ -201,6 +219,8 @@ namespace LojaVirtual.Aplicacao.Servicos
 
 					var status = result["status"].GetString();
 					var id = result["id"].GetInt64().ToString();
+					
+					_logger.LogInformation("💾 Atualizando pedido com status={Status}, PagamentoId={Id}", status, id);
 
 					// Atualizar status do pedido
 					pedido.PagamentoId = id;
@@ -230,6 +250,7 @@ namespace LojaVirtual.Aplicacao.Servicos
 					{
 						try
 						{
+							_logger.LogInformation("🎫 Extraindo QR Code PIX...");
 							var poiStr = poi.ToString();
 							if (!string.IsNullOrEmpty(poiStr))
 							{
@@ -243,6 +264,7 @@ namespace LojaVirtual.Aplicacao.Servicos
 										if (transObj != null && transObj.TryGetValue("qr_code_base64", out var qr))
 										{
 											pagamentoResponse.QrCodeBase64 = qr.GetString();
+											_logger.LogInformation("✅ QR Code PIX extraído com sucesso!");
 										}
 									}
 								}
@@ -250,15 +272,17 @@ namespace LojaVirtual.Aplicacao.Servicos
 						}
 						catch (Exception ex)
 						{
-							_logger.LogWarning(ex, "Erro ao extrair QR Code PIX");
+							_logger.LogWarning(ex, "⚠️ Erro ao extrair QR Code PIX");
 						}
 					}
 
+					_logger.LogInformation("🎉 Pagamento processado com sucesso! Status={Status}", status);
 					return pagamentoResponse;
 				}
 				else
 				{
 					// Tentar extrair mensagem de erro do Mercado Pago
+					_logger.LogError("❌ ERRO DO MERCADO PAGO! Status={StatusCode}", (int)response.StatusCode);
 					string mensagemErro = "Erro ao processar pagamento";
 					string codigoErro = "ERRO_MERCADO_PAGO";
 

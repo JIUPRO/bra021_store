@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using LojaVirtual.Dominio.Enums;
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Aplicacao.Services;
@@ -16,6 +17,7 @@ namespace LojaVirtual.API.Controllers
 			_pedidoService = servicoPedido;
 		}
 
+		[Authorize]
 		[HttpGet]
 		public async Task<ActionResult<IEnumerable<ResumoPedidoDTO>>> ObterTodos()
 		{
@@ -23,6 +25,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(pedidos);
 		}
 
+		[Authorize]
 		[HttpGet("{id}")]
 		public async Task<ActionResult<PedidoDTO>> ObterPorId(Guid id)
 		{
@@ -33,6 +36,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(pedido);
 		}
 
+		[Authorize]
 		[HttpGet("cliente/{clienteId}")]
 		public async Task<ActionResult<IEnumerable<ResumoPedidoDTO>>> ObterPorCliente(Guid clienteId)
 		{
@@ -40,6 +44,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(pedidos);
 		}
 
+		[Authorize]
 		[HttpGet("status/{status}")]
 		public async Task<ActionResult<IEnumerable<ResumoPedidoDTO>>> ObterPorStatus(StatusPedido status)
 		{
@@ -47,6 +52,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(pedidos);
 		}
 
+		[Authorize]
 		[HttpGet("periodo")]
 		public async Task<ActionResult<IEnumerable<ResumoPedidoDTO>>> ObterPorPeriodo(
 			 [FromQuery] DateTime dataInicio,
@@ -56,6 +62,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(pedidos);
 		}
 
+		[AllowAnonymous]
 		[HttpPost]
 		public async Task<ActionResult<PedidoDTO>> Criar([FromBody] CriarPedidoDTO dto)
 		{
@@ -70,6 +77,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpPut("{id}/status")]
 		public async Task<ActionResult<PedidoDTO>> AtualizarStatus(Guid id, [FromBody] StatusPedido status)
 		{
@@ -88,6 +96,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpPut("{id}/nota-fiscal")]
 		public async Task<ActionResult<PedidoDTO>> AtualizarNotaFiscal(Guid id, [FromBody] AtualizarNotaFiscalDTO dto)
 		{

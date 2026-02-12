@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Aplicacao.Services;
+using LojaVirtual.API.Utilitarios;
 
 namespace LojaVirtual.API.Controllers
 {
@@ -9,12 +11,15 @@ namespace LojaVirtual.API.Controllers
 	public class ClientesController : ControllerBase
 	{
 		private readonly IClienteService _clienteService;
+		private readonly IConfiguration _configuration;
 
-		public ClientesController(IClienteService servicoCliente)
+		public ClientesController(IClienteService servicoCliente, IConfiguration configuration)
 		{
 			_clienteService = servicoCliente;
+			_configuration = configuration;
 		}
 
+		[AllowAnonymous]
 		[HttpGet]
 		public async Task<ActionResult<IEnumerable<ClienteDTO>>> ObterTodos()
 		{
@@ -22,6 +27,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(clientes);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("{id}")]
 		public async Task<ActionResult<ClienteDTO>> ObterPorId(Guid id)
 		{
@@ -32,6 +38,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(cliente);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("email/{email}")]
 		public async Task<ActionResult<ClienteDTO>> ObterPorEmail(string email)
 		{
@@ -42,6 +49,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(cliente);
 		}
 
+		[AllowAnonymous]
 		[HttpGet("cpf/{cpf}")]
 		public async Task<ActionResult<ClienteDTO>> ObterPorCpf(string cpf)
 		{
@@ -52,6 +60,7 @@ namespace LojaVirtual.API.Controllers
 			return Ok(cliente);
 		}
 
+		[AllowAnonymous]
 		[HttpPost]
 		public async Task<ActionResult<ClienteDTO>> Criar([FromBody] CriarClienteDTO dto)
 		{
@@ -66,6 +75,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpPut("{id}")]
 		public async Task<ActionResult<ClienteDTO>> Atualizar(Guid id, [FromBody] AtualizarClienteDTO dto)
 		{
@@ -86,6 +96,7 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
 		[HttpDelete("{id}")]
 		public async Task<IActionResult> Remover(Guid id)
 		{
@@ -96,14 +107,22 @@ namespace LojaVirtual.API.Controllers
 			return NoContent();
 		}
 
+		[AllowAnonymous]
 		[HttpPost("login")]
-		public async Task<ActionResult<ClienteDTO>> Login([FromBody] LoginClienteDTO dto)
+		public async Task<ActionResult> Login([FromBody] LoginClienteDTO dto)
 		{
 			var cliente = await _clienteService.AutenticarAsync(dto);
 			if (cliente == null)
 				return Unauthorized(new { mensagem = "Email ou senha inválidos" });
 
-			return Ok(cliente);
+			// Gerar token JWT para o cliente
+			var token = GeradorToken.GerarToken(cliente.Id, cliente.Email, _configuration);
+
+			return Ok(new
+			{
+				token,
+				cliente
+			});
 		}
 	}
 }
