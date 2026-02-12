@@ -51,9 +51,18 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'editar-cadastro',
+    loadComponent: () => import('./pages/editar-cadastro/editar-cadastro.component').then(m => m.EditarCadastroComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'pedido-detalhe/:id',
     loadComponent: () => import('./pages/pedido-detalhe/pedido-detalhe.component').then(m => m.PedidoDetalheComponent),
     canActivate: [authGuard]
+  },
+  {
+    path: 'esqueceu-senha',
+    loadComponent: () => import('./pages/esqueceu-senha/esqueceu-senha.component').then(m => m.EsqueceuSenhaComponent)
   },
   {
     path: '**',

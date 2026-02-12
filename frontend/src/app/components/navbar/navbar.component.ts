@@ -73,6 +73,11 @@ import { Cliente } from '../../models/cliente.model';
                       <i class="bi bi-bag me-2"></i>Meus Pedidos
                     </a>
                   </li>
+                  <li>
+                    <a class="dropdown-item" routerLink="/editar-cadastro" (click)="dropdownAberto = false">
+                      <i class="bi bi-person-gear me-2"></i>Editar Cadastro
+                    </a>
+                  </li>
                   <li><hr class="dropdown-divider"></li>
                   <li>
                     <a class="dropdown-item text-danger" href="#" (click)="logout(); $event.preventDefault()">

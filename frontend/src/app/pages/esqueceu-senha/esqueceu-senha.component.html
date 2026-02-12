@@ -1,0 +1,149 @@
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-lg">
+        <div class="card-body p-4">
+          <!-- Title -->
+          <h2 class="card-title text-center mb-4">Recuperar Senha</h2>
+          
+          <!-- Step 1: Email Input -->
+          <div *ngIf="etapa === 1">
+            <p class="text-muted text-center mb-4">
+              Insira seu email cadastrado. Você receberá um código de 6 dígitos para redefinir sua senha.
+            </p>
+
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                [class.is-invalid]="tentouEnviar && !email"
+                id="email" 
+                placeholder="seu@email.com"
+                [(ngModel)]="email"
+                [disabled]="carregando"
+              />
+              <div class="invalid-feedback" *ngIf="tentouEnviar && !email">
+                Email é obrigatório
+              </div>
+            </div>
+
+            <button 
+              class="btn btn-primary w-100 mb-3"
+              (click)="enviarEmail()"
+              [disabled]="carregando"
+            >
+              <span *ngIf="!carregando">Enviar Código</span>
+              <span *ngIf="carregando">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Enviando...
+              </span>
+            </button>
+
+            <hr>
+
+            <p class="text-center mb-0">
+              <a href="/login" class="text-decoration-none">← Voltar para Login</a>
+            </p>
+          </div>
+
+          <!-- Step 2: Code & New Password -->
+          <div *ngIf="etapa === 2">
+            <p class="text-muted text-center mb-4">
+              Insira o código de 6 dígitos que você recebeu no email e sua nova senha.
+            </p>
+
+            <!-- Código -->
+            <div class="mb-3">
+              <label for="codigo" class="form-label">Código de Recuperação</label>
+              <input 
+                type="text" 
+                class="form-control form-control-lg text-center"
+                [class.is-invalid]="tentouEnviar && !codigo"
+                id="codigo" 
+                placeholder="ABC123"
+                [(ngModel)]="codigo"
+                (input)="aoDigitarCodigo()"
+                maxlength="6"
+                [disabled]="carregando"
+              />
+              <small class="text-muted d-block mt-1">{{ codigo.length }}/6 caracteres</small>
+              <div class="invalid-feedback" *ngIf="tentouEnviar && !codigo">
+                Código é obrigatório
+              </div>
+            </div>
+
+            <!-- Nova Senha -->
+            <div class="mb-3">
+              <label for="novaSenha" class="form-label">Nova Senha</label>
+              <input 
+                type="password" 
+                class="form-control"
+                [class.is-invalid]="tentouEnviar && (!novaSenha || novaSenha.length < 6)"
+                id="novaSenha" 
+                placeholder="Mínimo 6 caracteres"
+                [(ngModel)]="novaSenha"
+                [disabled]="carregando"
+              />
+              <small class="text-muted d-block mt-1">{{ novaSenha.length }}/6+ caracteres</small>
+              <div class="invalid-feedback" *ngIf="tentouEnviar && !novaSenha">
+                Nova senha é obrigatória
+              </div>
+              <div class="invalid-feedback" *ngIf="tentouEnviar && novaSenha && novaSenha.length < 6">
+                Mínimo 6 caracteres
+              </div>
+            </div>
+
+            <!-- Confirma Senha -->
+            <div class="mb-3">
+              <label for="confirmaSenha" class="form-label">Confirmar Senha</label>
+              <input 
+                type="password" 
+                class="form-control"
+                [class.is-invalid]="tentouEnviar && (!confirmaSenha || novaSenha !== confirmaSenha)"
+                id="confirmaSenha" 
+                placeholder="Confirme sua nova senha"
+                [(ngModel)]="confirmaSenha"
+                [disabled]="carregando"
+              />
+              <div class="invalid-feedback" *ngIf="tentouEnviar && !confirmaSenha">
+                Confirmação de senha é obrigatória
+              </div>
+              <div class="invalid-feedback" *ngIf="tentouEnviar && confirmaSenha && novaSenha !== confirmaSenha">
+                As senhas não correspondem
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+              class="btn btn-success w-100 mb-2"
+              (click)="resetarSenha()"
+              [disabled]="carregando"
+            >
+              <span *ngIf="!carregando">Redefinir Senha</span>
+              <span *ngIf="carregando">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Processando...
+              </span>
+            </button>
+
+            <!-- Back Button -->
+            <button 
+              class="btn btn-outline-secondary w-100 mb-3"
+              (click)="voltarParaEmail()"
+              [disabled]="carregando"
+            >
+              ← Voltar
+            </button>
+
+            <hr>
+
+            <p class="text-center mb-0 text-muted small">
+              Código de 6 dígitos válido por 20 minutos
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

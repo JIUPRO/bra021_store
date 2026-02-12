@@ -11,5 +11,6 @@ namespace LojaVirtual.Dominio.Interfaces
 		Task EnviarEmailCancelamentoPedidoAsync(Pedido pedido);
 		Task EnviarEmailEstoqueBaixoAsync(Produto produto, int estoqueAtual);
 		Task EnviarEmailNotaFiscalAsync(Pedido pedido);
+		Task EnviarEmailRecuperacaoSenhaAsync(string email, string codigo);
 	}
 }

@@ -92,4 +92,8 @@ export class ClienteService {
   atualizar(id: string, dados: Partial<Cliente>): Observable<Cliente> {
     return this.api.put<Cliente>('clientes', id, dados);
   }
+
+  atualizarClienteLogado(cliente: Cliente): void {
+    this.salvarClienteLogado(cliente);
+  }
 }

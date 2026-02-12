@@ -41,7 +41,12 @@ namespace LojaVirtual.Aplicacao.Servicos
 			_logger = logger;
 			_httpClient = httpClientFactory.CreateClient();
 			_httpClient.BaseAddress = new Uri("https://api.mercadopago.com/v1/");
-			_httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_configuration["MercadoPago:AccessToken"]}");
+			
+			var accessToken = _configuration["MercadoPago:AccessToken"];
+			var tokenPrefix = string.IsNullOrEmpty(accessToken) ? "NULL" : accessToken.Substring(0, Math.Min(15, accessToken.Length));
+			_logger.LogInformation("🔑 Mercado Pago AccessToken configurado: {TokenPrefix}...", tokenPrefix);
+			
+			_httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
 			_httpClient.DefaultRequestHeaders.Add("X-Idempotency-Key", Guid.NewGuid().ToString());
 		}
 

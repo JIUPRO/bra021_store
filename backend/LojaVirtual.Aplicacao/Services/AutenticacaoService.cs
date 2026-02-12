@@ -4,6 +4,7 @@ using AutoMapper;
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Dominio.Entidades;
 using LojaVirtual.Dominio.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace LojaVirtual.Aplicacao.Services
 {
@@ -11,11 +12,15 @@ namespace LojaVirtual.Aplicacao.Services
 	{
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IMapper _mapper;
+		private readonly ILogger<AutenticacaoService>? _logger;
+		private readonly INotificacaoService? _notificacaoService;
 
-		public AutenticacaoService(IUnitOfWork unitOfWork, IMapper mapper)
+		public AutenticacaoService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<AutenticacaoService>? logger = null, INotificacaoService? notificacaoService = null)
 		{
 			_unitOfWork = unitOfWork;
 			_mapper = mapper;
+			_logger = logger;
+			_notificacaoService = notificacaoService;
 		}
 
 		public async Task<UsuarioDTO?> RegistrarAsync(RegistroDTO registro)
@@ -151,6 +156,125 @@ namespace LojaVirtual.Aplicacao.Services
 		{
 			var hashDoInput = CriptografarSenha(senha);
 			return hashDoInput == senhaHash;
+		}
+
+		// ====== MÉTODOS PARA CLIENTES (ESQUECEU/RESET SENHA) ======
+
+		public async Task<(bool sucesso, string mensagem)> EsqueceuSenhaAsync(EsqueceuSenhaDTO dto)
+		{
+			try
+			{
+				if (string.IsNullOrWhiteSpace(dto.Email))
+				{
+					return (false, "Email é obrigatório");
+				}
+
+				var cliente = await _unitOfWork.Clientes.ObterPorEmailAsync(dto.Email);
+				if (cliente == null)
+				{
+					// Não revelamos se email existe ou não por segurança
+					_logger?.LogInformation($"Tentativa de reset de senha com email inexistente: {dto.Email}");
+					return (true, "Foi enviado o codigo pro seu email");
+				}
+
+				// Gerar código de 6 caracteres alfanumérico
+				var codigo = GerarCodigoAlfanumerico(6);
+
+				// Limpar tokens antigos deste cliente  
+				var tokensAntigos = await _unitOfWork.ClientesTrocaSenha.ObterPorClienteIdAsync(cliente.Id);
+				foreach (var tokenAntigo in tokensAntigos.Where(t => !t.Utilizado))
+				{
+					await _unitOfWork.ClientesTrocaSenha.RemoverAsync(tokenAntigo.Id);
+				}
+
+				// Criar novo token
+				var clienteTrocaSenha = new ClienteTrocaSenha(cliente.Id, cliente.Email, codigo);
+				await _unitOfWork.ClientesTrocaSenha.AdicionarAsync(clienteTrocaSenha);
+				await _unitOfWork.SalvarMudancasAsync();
+
+				// Enviar email com código
+				if (_notificacaoService != null)
+				{
+					await _notificacaoService.EnviarEmailRecuperacaoSenhaAsync(cliente.Email, codigo);
+				}
+
+				_logger?.LogInformation($"Código de reset gerado para: {dto.Email} - Código: {codigo}");
+				return (true, "Foi enviado o codigo pro seu email");
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogError($"Erro ao processar esqueceu senha: {ex.Message}");
+				return (false, "Erro ao processar solicitação");
+			}
+		}
+
+		public async Task<(bool sucesso, string mensagem)> ResetarSenhaAsync(ResetarSenhaDTO dto)
+		{
+			try
+			{
+				if (string.IsNullOrWhiteSpace(dto.Email) || 
+					string.IsNullOrWhiteSpace(dto.Codigo) ||
+					string.IsNullOrWhiteSpace(dto.NovaSenha))
+				{
+					return (false, "Email, código e nova senha são obrigatórios");
+				}
+
+				if (dto.NovaSenha != dto.ConfirmaSenha)
+				{
+					return (false, "Senhas não correspondem");
+				}
+
+				if (dto.NovaSenha.Length < 6)
+				{
+					return (false, "Senha deve ter no mínimo 6 caracteres");
+				}
+
+				// Buscar o token de reset
+				var clienteTrocaSenha = await _unitOfWork.ClientesTrocaSenha
+					.ObterPorEmailECodigoAsync(dto.Email, dto.Codigo);
+
+				if (clienteTrocaSenha == null || !clienteTrocaSenha.EstaValido())
+				{
+					return (false, "Código inválido ou expirado");
+				}
+
+				// Buscar cliente
+				var cliente = await _unitOfWork.Clientes.ObterPorIdAsync(clienteTrocaSenha.ClienteId);
+				if (cliente == null)
+				{
+					return (false, "Cliente não encontrado");
+				}
+
+				// Atualizar senha
+				cliente.SenhaHash = CriptografarSenha(dto.NovaSenha);
+				cliente.DataAtualizacao = DateTime.UtcNow;
+
+				await _unitOfWork.Clientes.AtualizarAsync(cliente);
+
+				// Marcar token como utilizado
+				clienteTrocaSenha.Utilizado = true;
+				await _unitOfWork.ClientesTrocaSenha.AtualizarAsync(clienteTrocaSenha);
+
+				await _unitOfWork.SalvarMudancasAsync();
+
+				_logger?.LogInformation($"Senha resetada para: {dto.Email}");
+				return (true, "Senha foi resetada com sucesso. Faça login com sua nova senha");
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogError($"Erro ao resetar senha: {ex.Message}");
+				return (false, "Erro ao resetar senha");
+			}
+		}
+
+		private string GerarCodigoAlfanumerico(int comprimento)
+		{
+			const string caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+			var random = new Random();
+			var codigo = new string(Enumerable.Range(0, comprimento)
+				.Select(_ => caracteres[random.Next(caracteres.Length)])
+				.ToArray());
+			return codigo;
 		}
 	}
 }

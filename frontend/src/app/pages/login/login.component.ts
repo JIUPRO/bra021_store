@@ -91,7 +91,7 @@ import { LoginCliente } from '../../models/cliente.model';
                   Não tem uma conta? 
                   <a routerLink="/cadastro" class="text-decoration-none">Cadastre-se</a>
                 </p>
-                <a href="#" class="text-decoration-none small">Esqueceu sua senha?</a>
+                <a routerLink="/esqueceu-senha" class="text-decoration-none small">Esqueceu sua senha?</a>
               </div>
             </div>
           </div>

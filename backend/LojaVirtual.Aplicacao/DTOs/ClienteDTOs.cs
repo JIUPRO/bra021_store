@@ -58,4 +58,23 @@ namespace LojaVirtual.Aplicacao.DTOs
         public string Email { get; set; } = string.Empty;
         public string Senha { get; set; } = string.Empty;
     }
+
+    public class EsqueceuSenhaDTO
+    {
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ResetarSenhaDTO
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Codigo { get; set; } = string.Empty;
+        public string NovaSenha { get; set; } = string.Empty;
+        public string ConfirmaSenha { get; set; } = string.Empty;
+    }
+
+    public class EsqueceuSenhaResponseDTO
+    {
+        public bool Sucesso { get; set; }
+        public string Mensagem { get; set; } = string.Empty;
+    }
 }

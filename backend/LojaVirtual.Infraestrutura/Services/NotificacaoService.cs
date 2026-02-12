@@ -524,6 +524,73 @@ namespace LojaVirtual.Infraestrutura.Services
 			}
 		}
 
+		public async Task EnviarEmailRecuperacaoSenhaAsync(string email, string codigo)
+		{
+			_logger.LogInformation("[Email] Iniciando envio de email de recuperação de senha para {Email}", email);
+
+			var emailSettings = _configuracao.GetSection("EmailSettings");
+			var smtpServer = emailSettings["SmtpServer"] ?? "smtp.gmail.com";
+			var port = int.Parse(emailSettings["Port"] ?? "587");
+			var enableSsl = bool.TryParse(emailSettings["EnableSsl"], out var ssl) && ssl;
+			var username = emailSettings["Username"] ?? "";
+			var password = emailSettings["Password"] ?? "";
+			var fromEmail = emailSettings["FromEmail"] ?? username;
+
+			_logger.LogDebug("[Email] SMTP Config - Server: {SmtpServer}, Port: {Port}, SSL: {EnableSsl}", smtpServer, port, enableSsl);
+
+			if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+			{
+				_logger.LogWarning("[Email] Configurações de email incompletas (Username ou Password vazios). Email não enviado para {Email}", email);
+				return;
+			}
+
+			var mensagem = new MimeMessage();
+			mensagem.From.Add(new MailboxAddress("Loja Brazil-021", fromEmail));
+			mensagem.To.Add(new MailboxAddress("Cliente", email));
+			mensagem.Subject = "Recuperação de Senha - Loja Brazil-021";
+
+			var corpo = new StringBuilder();
+			corpo.AppendLine("<h2>Recuperação de Senha</h2>");
+			corpo.AppendLine("<p>Recebemos uma solicitação para recuperar sua senha.</p>");
+			corpo.AppendLine("<h3>Seu código de recuperação:</h3>");
+			corpo.AppendLine($"<div style=\"background-color: #f0f0f0; padding: 20px; border-radius: 5px; text-align: center;\">");
+			corpo.AppendLine($"<h1 style=\"color: #333; font-size: 32px; letter-spacing: 5px; margin: 0;\">{codigo}</h1>");
+			corpo.AppendLine($"</div>");
+			corpo.AppendLine("<p style=\"color: #666; margin-top: 20px;\">Este código é válido por <strong>20 minutos</strong>.</p>");
+			corpo.AppendLine("<p style=\"color: #666;\">Se não solicitou esta recuperação, ignore este email.</p>");
+			corpo.AppendLine("<hr style=\"border: none; border-top: 1px solid #ddd; margin: 30px 0;\">");
+			corpo.AppendLine("<p style=\"font-size: 12px; color: #999;\">Loja Brazil-021 School of Jiu-Jitsu</p>");
+
+			mensagem.Body = new TextPart("html")
+			{
+				Text = corpo.ToString()
+			};
+
+			try
+			{
+				using var cliente = new SmtpClient();
+				var secureSocketOptions = enableSsl
+					? MailKit.Security.SecureSocketOptions.StartTls
+					: MailKit.Security.SecureSocketOptions.Auto;
+
+				_logger.LogDebug("[Email] Conectando ao servidor SMTP {SmtpServer}:{Port}", smtpServer, port);
+				await cliente.ConnectAsync(smtpServer, port, secureSocketOptions);
+
+				_logger.LogDebug("[Email] Autenticando no servidor SMTP com usuário {Username}", username);
+				await cliente.AuthenticateAsync(username, password);
+
+				_logger.LogDebug("[Email] Enviando email para {Email}", email);
+				await cliente.SendAsync(mensagem);
+				await cliente.DisconnectAsync(true);
+
+				_logger.LogInformation("[Email] ✓ Email de recuperação de senha enviado com SUCESSO para {Email}", email);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "[Email] ✗ ERRO ao enviar email de recuperação de senha para {Email}: {ErrorMessage}", email, ex.Message);
+			}
+		}
+
 		private string ObterStatusPorExtenso(StatusPedido status)
 		{
 			return status switch

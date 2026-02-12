@@ -1,13 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ClienteService } from '../../services/cliente.service';
 import { AlertService } from '../../services/alert.service';
-import { CriarCliente } from '../../models/cliente.model';
+import { Cliente } from '../../models/cliente.model';
 
 @Component({
-  selector: 'app-cadastro',
+  selector: 'app-editar-cadastro',
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule],
   template: `
@@ -17,12 +17,19 @@ import { CriarCliente } from '../../models/cliente.model';
           <div class="card shadow">
             <div class="card-body p-5">
               <div class="text-center mb-4">
-                <i class="bi bi-person-plus fs-1 text-primary"></i>
-                <h2 class="fw-bold mt-3">Criar Conta</h2>
-                <p class="text-muted">Preencha seus dados para se cadastrar</p>
+                <i class="bi bi-person-gear fs-1 text-primary"></i>
+                <h2 class="fw-bold mt-3">Editar Cadastro</h2>
+                <p class="text-muted">Atualize seus dados pessoais</p>
               </div>
 
-              <form (ngSubmit)="cadastrar()">
+              <div *ngIf="carregando" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-3 text-muted">Carregando seus dados...</p>
+              </div>
+
+              <form (ngSubmit)="atualizar()" *ngIf="!carregando">
                 <!-- Avisos de Campos Obrigatórios -->
                 <div class="alert alert-info mb-4" *ngIf="tentouEnviar && errosValidacao.length > 0">
                   <i class="bi bi-exclamation-circle me-2"></i>
@@ -66,11 +73,10 @@ import { CriarCliente } from '../../models/cliente.model';
                         name="email"
                         placeholder="seu@email.com"
                         required
+                        disabled
                       >
                     </div>
-                    <small class="text-danger" *ngIf="tentouEnviar && !dados.email">
-                      <i class="bi bi-exclamation-circle me-1"></i>Email é obrigatório
-                    </small>
+                    <small class="text-muted">Email não pode ser alterado</small>
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Telefone *</label>
@@ -127,85 +133,108 @@ import { CriarCliente } from '../../models/cliente.model';
                   </div>
                 </div>
 
+                <h5 class="mt-4 mb-3"><i class="bi bi-map me-2"></i>Endereço</h5>
+
                 <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Senha *</label>
-                    <div class="input-group">
-                      <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                      <input 
-                        [type]="mostrarSenha ? 'text' : 'password'" 
-                        class="form-control" 
-                        [(ngModel)]="dados.senha" 
-                        name="senha"
-                        placeholder="Digite sua senha"
-                        required
-                      >
-                      <button 
-                        class="btn btn-outline-secondary" 
-                        type="button"
-                        (click)="mostrarSenha = !mostrarSenha"
-                      >
-                        <i class="bi" [class.bi-eye]="!mostrarSenha" [class.bi-eye-slash]="mostrarSenha"></i>
-                      </button>
-                    </div>
+                  <div class="col-md-3 mb-3">
+                    <label class="form-label">CEP</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="dados.cep" 
+                      name="cep"
+                      placeholder="00000-000"
+                      (input)="aoDigitarCep($event)"
+                      (blur)="buscarCep()"
+                    >
                   </div>
-                  <div class="col-md-6 mb-3">
-                    <label class="form-label">Confirmar Senha *</label>
-                    <div class="input-group">
-                      <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                      <input 
-                        [type]="mostrarConfirmarSenha ? 'text' : 'password'" 
-                        class="form-control" 
-                        [(ngModel)]="confirmarSenha" 
-                        name="confirmarSenha"
-                        placeholder="Confirme sua senha"
-                        required
-                      >
-                      <button 
-                        class="btn btn-outline-secondary" 
-                        type="button"
-                        (click)="mostrarConfirmarSenha = !mostrarConfirmarSenha"
-                      >
-                        <i class="bi" [class.bi-eye]="!mostrarConfirmarSenha" [class.bi-eye-slash]="mostrarConfirmarSenha"></i>
-                      </button>
-                    </div>
+                  <div class="col-md-9 mb-3">
+                    <label class="form-label">Logradouro</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="dados.logradouro" 
+                      name="logradouro"
+                      placeholder="Rua, Avenida, etc."
+                    >
                   </div>
                 </div>
 
-                <div class="mb-3 form-check">
-                  <input type="checkbox" class="form-check-input" id="termos" [(ngModel)]="aceitaTermos" name="termos" required>
-                  <label class="form-check-label" for="termos">
-                    Li e aceito os <a href="#">Termos de Uso</a> e <a href="#">Política de Privacidade</a>
-                  </label>
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Número</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="dados.numero" 
+                      name="numero"
+                      placeholder="123"
+                    >
+                  </div>
+                  <div class="col-md-8 mb-3">
+                    <label class="form-label">Complemento</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="dados.complemento" 
+                      name="complemento"
+                      placeholder="Apto, Bloco, etc."
+                    >
+                  </div>
                 </div>
 
-                <button 
-                  type="submit" 
-                  class="btn btn-primario w-100 btn-lg mb-3"
-                  [disabled]="processando"
-                >
-                  <span *ngIf="!processando">
-                    <i class="bi bi-person-plus me-2"></i>Criar Conta
-                  </span>
-                  <span *ngIf="processando">
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                    Criando conta...
-                  </span>
-                </button>
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Bairro</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="dados.bairro" 
+                      name="bairro"
+                      placeholder="Bairro"
+                    >
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Cidade</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="dados.cidade" 
+                      name="cidade"
+                      placeholder="Cidade"
+                    >
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Estado</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="dados.estado" 
+                      name="estado"
+                      placeholder="SP"
+                      maxlength="2"
+                    >
+                  </div>
+                </div>
 
-                <div *ngIf="erro" class="alert alert-danger">
-                  <i class="bi bi-exclamation-triangle me-2"></i>{{ erro }}
+                <div class="d-grid gap-2 mt-4">
+                  <button 
+                    type="submit" 
+                    class="btn btn-primario btn-lg"
+                    [disabled]="processando"
+                  >
+                    <span *ngIf="!processando">
+                      <i class="bi bi-check-circle me-2"></i>Salvar Alterações
+                    </span>
+                    <span *ngIf="processando">
+                      <i class="spinner-border spinner-border-sm me-2"></i>Salvando...
+                    </span>
+                  </button>
+                  <a routerLink="/meus-pedidos" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-left me-2"></i>Voltar
+                  </a>
                 </div>
               </form>
-
-              <hr class="my-4">
-
-              <div class="text-center">
-                <p class="mb-0">
-                  Já tem uma conta? 
-                  <a routerLink="/login" class="text-decoration-none">Entrar</a>
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -214,19 +243,17 @@ import { CriarCliente } from '../../models/cliente.model';
   `,
   styles: [`
     .btn-primario {
-      background: linear-gradient(135deg, var(--cor-primaria), var(--cor-primaria-claro));
+      background: var(--cor-primaria);
+      color: white;
       border: none;
-      border-radius: 8px;
-      padding: 12px 24px;
       font-weight: 600;
       transition: all 0.3s ease;
-      color: var(--cor-escura);
     }
     
     .btn-primario:hover:not(:disabled) {
+      background: var(--cor-primaria-claro);
       transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(47,106,73,0.18);
-      color: var(--cor-escura);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     }
     
     .btn-primario:disabled {
@@ -237,24 +264,47 @@ import { CriarCliente } from '../../models/cliente.model';
     .card {
       border: none;
       border-radius: 16px;
+      margin-top: 20px;
+    }
+    
+    .text-danger {
+      color: var(--cor-perigo) !important;
+    }
+    
+    .is-invalid {
+      border-color: var(--cor-perigo) !important;
+    }
+    
+    h5 {
+      font-weight: 600;
+      color: var(--cor-escura);
+    }
+    
+    .spinner-border {
+      width: 50px;
+      height: 50px;
     }
   `]
 })
-export class CadastroComponent {
-  dados: CriarCliente = {
+export class EditarCadastroComponent implements OnInit {
+  dados: any = {
+    id: '',
     nome: '',
     email: '',
     telefone: '',
     cpf: '',
     dataNascimento: undefined,
-    senha: ''
+    cep: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
+    cidade: '',
+    estado: ''
   };
-  confirmarSenha = '';
-  mostrarSenha = false;
-  mostrarConfirmarSenha = false;
-  aceitaTermos = false;
+
+  carregando = true;
   processando = false;
-  erro = '';
   tentouEnviar = false;
   errosValidacao: string[] = [];
 
@@ -264,8 +314,39 @@ export class CadastroComponent {
     private router: Router
   ) {}
 
-  cadastrar(): void {
-    this.erro = '';
+  ngOnInit(): void {
+    this.carregarDados();
+  }
+
+  carregarDados(): void {
+    const cliente = this.clienteService.obterClienteLogado();
+    
+    if (!cliente) {
+      this.alertService.warning('Atenção', 'Você não está logado. Faça login para continuar.');
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    this.dados = {
+      id: cliente.id,
+      nome: cliente.nome,
+      email: cliente.email,
+      telefone: cliente.telefone || '',
+      cpf: cliente.cpf || '',
+      dataNascimento: cliente.dataNascimento ? new Date(cliente.dataNascimento) : undefined,
+      cep: cliente.cep || '',
+      logradouro: cliente.logradouro || '',
+      numero: cliente.numero || '',
+      complemento: cliente.complemento || '',
+      bairro: cliente.bairro || '',
+      cidade: cliente.cidade || '',
+      estado: cliente.estado || ''
+    };
+
+    this.carregando = false;
+  }
+
+  atualizar(): void {
     this.tentouEnviar = true;
     this.errosValidacao = [];
 
@@ -273,54 +354,59 @@ export class CadastroComponent {
     if (!this.dados.nome?.trim()) {
       this.errosValidacao.push('Nome completo');
     }
-    if (!this.dados.email?.trim()) {
-      this.errosValidacao.push('Email');
-    }
     if (!this.dados.telefone?.trim()) {
       this.errosValidacao.push('Telefone');
     }
     if (!this.dados.cpf?.trim()) {
       this.errosValidacao.push('CPF');
     }
-    if (!this.dados.senha?.trim()) {
-      this.errosValidacao.push('Senha');
-    }
-    if (!this.confirmarSenha?.trim()) {
-      this.errosValidacao.push('Confirmação de Senha');
-    }
 
-    // Se há erros, mostrar e retornar
     if (this.errosValidacao.length > 0) {
       this.alertService.warning('Atenção', 'Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    if (this.dados.senha !== this.confirmarSenha) {
-      this.alertService.error('Erro', 'As senhas não coincidem.');
-      return;
-    }
-
-    if (!this.aceitaTermos) {
-      this.alertService.warning('Atenção', 'Você deve aceitar os termos de uso.');
-      return;
-    }
-
     this.processando = true;
 
-    this.clienteService.cadastrar(this.dados).subscribe({
-      next: () => {
+    // Preparar DTO para atualização
+    const atualizarClienteDTO = {
+      nome: this.dados.nome,
+      email: this.dados.email,
+      telefone: this.dados.telefone,
+      cpf: this.dados.cpf,
+      dataNascimento: this.dados.dataNascimento,
+      cep: this.dados.cep,
+      logradouro: this.dados.logradouro,
+      numero: this.dados.numero,
+      complemento: this.dados.complemento,
+      bairro: this.dados.bairro,
+      cidade: this.dados.cidade,
+      estado: this.dados.estado
+    };
+
+    this.clienteService.atualizar(this.dados.id, atualizarClienteDTO).subscribe({
+      next: (clienteAtualizado) => {
         this.processando = false;
-        this.alertService.success('Conta criada com sucesso!', 'Faça login para continuar.');
+        this.alertService.success('Sucesso!', 'Seus dados foram atualizados com sucesso.');
+        
+        // Atualizar o cliente logado no serviço
+        this.clienteService.atualizarClienteLogado(clienteAtualizado);
+        
         setTimeout(() => {
-          this.router.navigate(['/login']);
+          this.router.navigate(['/meus-pedidos']);
         }, 1500);
       },
       error: (err) => {
         this.processando = false;
-        this.erro = 'Erro ao criar conta. Tente novamente.';
-        this.alertService.error('Erro ao criar conta', 'Tente novamente ou use outro email.');
+        this.alertService.error('Erro', 'Não foi possível atualizar seus dados. Tente novamente.');
+        console.error('Erro ao atualizar cliente', err);
       }
     });
+  }
+
+  buscarCep(): void {
+    // Aqui você pode integrar com uma API de CEP se desejar
+    console.log('Buscar CEP:', this.dados.cep);
   }
 
   formatarCpf(valor: string): string {

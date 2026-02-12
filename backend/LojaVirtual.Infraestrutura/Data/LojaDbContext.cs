@@ -19,6 +19,7 @@ namespace LojaVirtual.Infraestrutura.Data
 		public DbSet<Escola> Escolas { get; set; }
 		public DbSet<ParametroSistema> ParametrosSistema { get; set; }
 		public DbSet<Usuario> Usuarios { get; set; }
+		public DbSet<ClienteTrocaSenha> ClientesTrocaSenha { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
@@ -218,6 +219,27 @@ namespace LojaVirtual.Infraestrutura.Data
 				entity.Property(e => e.Ativo).HasDefaultValue(true);
 				entity.Property(e => e.DataCriacao).HasDefaultValueSql("GETUTCDATE()");
 				entity.HasIndex(e => e.Email).IsUnique();
+			});
+
+			// Configurações de ClienteTrocaSenha
+			modelBuilder.Entity<ClienteTrocaSenha>(entity =>
+			{
+				entity.ToTable("ClientesTrocaSenha");
+				entity.HasKey(e => e.Id);
+				entity.Property(e => e.ClienteId).IsRequired();
+				entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+				entity.Property(e => e.Codigo).IsRequired().HasMaxLength(6);
+				entity.Property(e => e.DataCriacao).IsRequired();
+				entity.Property(e => e.DataExpiracao).IsRequired();
+				entity.Property(e => e.Utilizado).IsRequired();
+				
+				entity.HasOne(e => e.Cliente)
+					.WithMany()
+					.HasForeignKey(e => e.ClienteId)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasIndex(e => e.Codigo).IsUnique();
+				entity.HasIndex(e => new { e.Email, e.DataExpiracao });
 			});
 		}
 	}
