@@ -65,7 +65,7 @@ import { Cliente } from '../../models/cliente.model';
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" (click)="dropdownAberto = !dropdownAberto; $event.preventDefault()">
                   <i class="bi bi-person-circle me-1"></i>
-                  {{ clienteLogado.nome.split(' ')[0] }}
+                  {{ obterPrimeiroNome() }}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" [class.show]="dropdownAberto">
                   <li>
@@ -157,5 +157,13 @@ export class NavbarComponent implements OnInit {
     this.clienteService.logout();
     this.dropdownAberto = false;
     this.router.navigate(['/']);
+  }
+
+  obterPrimeiroNome(): string {
+    if (!this.clienteLogado?.nome) {
+      return 'Usuário';
+    }
+    const partes = this.clienteLogado.nome.split(' ');
+    return partes[0] || 'Usuário';
   }
 }
