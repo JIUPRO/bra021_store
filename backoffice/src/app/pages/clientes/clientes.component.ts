@@ -1,6 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ClienteService, ClienteDTO } from '../../services/cliente.service';
 import { AlertService } from '../../services/alert.service';
@@ -9,7 +8,7 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, PaginationComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent],
   template: `
     <div class="clientes-page">
       <div class="d-flex justify-content-between align-items-center mb-4">

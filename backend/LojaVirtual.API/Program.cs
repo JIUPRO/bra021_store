@@ -92,8 +92,8 @@ builder.Services.AddHttpClient();
 // Registrar Serviço de Pagamento
 builder.Services.AddScoped<IServicoPagamento, ServicoPagamento>();
 
-// Configurar AutoMapper
-builder.Services.AddAutoMapper(typeof(MapeamentoPerfil));
+// Configurar Mapster
+MapsterConfig.RegisterMappings();
 
 var app = builder.Build();
 

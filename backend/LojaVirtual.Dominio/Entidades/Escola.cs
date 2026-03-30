@@ -16,7 +16,6 @@ namespace LojaVirtual.Dominio.Entidades
 		public string? Contato { get; set; }
 		public string? ProfessorResponsavel { get; set; }
 		public decimal PercentualComissao { get; set; }
-		public bool Ativo { get; set; }
 
 		// Navegação
 		public virtual ICollection<Pedido> Pedidos { get; set; } = new List<Pedido>();

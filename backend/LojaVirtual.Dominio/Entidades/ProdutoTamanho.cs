@@ -5,7 +5,6 @@ namespace LojaVirtual.Dominio.Entidades
 		public Guid ProdutoId { get; set; }
 		public string Tamanho { get; set; } = string.Empty;
 		public int QuantidadeEstoque { get; set; }
-		public bool Ativo { get; set; } = true;
 
 		// Relacionamentos
 		public Produto Produto { get; set; } = null!;

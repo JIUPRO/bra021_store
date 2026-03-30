@@ -1,6 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CategoriaService, CategoriaDTO } from '../../services/categoria.service';
 import { AlertService } from '../../services/alert.service';
@@ -9,7 +8,7 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
 @Component({
   selector: 'app-categorias',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule, PaginationComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, PaginationComponent],
   template: `
     <div class="categorias-page">
       <div class="d-flex justify-content-between align-items-center mb-4">

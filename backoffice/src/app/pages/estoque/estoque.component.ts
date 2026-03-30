@@ -1,6 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { EstoqueService, MovimentacaoEstoqueDTO, AlertaEstoqueDTO } from '../../services/estoque.service';
 import { ProdutoService, ProdutoDTO } from '../../services/produto.service';
@@ -11,7 +10,7 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
 @Component({
   selector: 'app-estoque',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, PaginationComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent],
   template: `
     <div class="estoque-page">
       <div class="d-flex justify-content-between align-items-center mb-4">

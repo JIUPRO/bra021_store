@@ -139,6 +139,10 @@ namespace LojaVirtual.API.Controllers
 				}
 
 				var usuario = await _AutenticacaoService.CriarUsuarioAsync(criacaoDTO);
+				if (usuario == null)
+				{
+					return BadRequest("Erro ao criar usuário");
+				}
 				return CreatedAtAction(nameof(ObterUsuario), new { id = usuario.Id }, usuario);
 			}
 			catch (InvalidOperationException ex)

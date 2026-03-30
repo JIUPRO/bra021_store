@@ -1,7 +1,7 @@
-using AutoMapper;
+using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Dominio.Entidades;
 using LojaVirtual.Dominio.Interfaces;
-using LojaVirtual.Aplicacao.DTOs;
+using Mapster;
 
 namespace LojaVirtual.Aplicacao.Services
 {
@@ -18,64 +18,66 @@ namespace LojaVirtual.Aplicacao.Services
 	public class EscolaService : IEscolaService
 	{
 		private readonly IUnitOfWork _unitOfWork;
-		private readonly IMapper _mapeador;
 
-		public EscolaService(IUnitOfWork unitOfWork, IMapper mapeador)
+		public EscolaService(IUnitOfWork unitOfWork)
 		{
 			_unitOfWork = unitOfWork;
-			_mapeador = mapeador;
 		}
 
 		public async Task<IEnumerable<EscolaDTO>> ObterTodasAsync()
 		{
 			var escolas = await _unitOfWork.Escolas.ObterTodosAsync();
-			return _mapeador.Map<IEnumerable<EscolaDTO>>(escolas);
+			return escolas.Adapt<IEnumerable<EscolaDTO>>();
 		}
 
 		public async Task<IEnumerable<EscolaDTO>> ObterAtivasAsync()
 		{
 			var escolas = await _unitOfWork.Escolas.ObterAtivasAsync();
-			return _mapeador.Map<IEnumerable<EscolaDTO>>(escolas);
+			return escolas.Adapt<IEnumerable<EscolaDTO>>();
 		}
 
 		public async Task<EscolaDTO?> ObterPorIdAsync(Guid id)
 		{
 			var escola = await _unitOfWork.Escolas.ObterPorIdAsync(id);
-			return escola == null ? null : _mapeador.Map<EscolaDTO>(escola);
+			return escola?.Adapt<EscolaDTO>();
 		}
 
 		public async Task<EscolaDTO> CriarAsync(CriarEscolaDTO dto)
 		{
-			var escola = _mapeador.Map<Escola>(dto);
+			var escola = dto.Adapt<Escola>();
 			escola.DataCriacao = DateTime.UtcNow;
 			escola.Ativo = true;
 
 			await _unitOfWork.Escolas.AdicionarAsync(escola);
 			await _unitOfWork.SalvarMudancasAsync();
 
-			return _mapeador.Map<EscolaDTO>(escola);
+			return escola.Adapt<EscolaDTO>();
 		}
 
 		public async Task<EscolaDTO?> AtualizarAsync(AtualizarEscolaDTO dto)
 		{
 			var escolaExistente = await _unitOfWork.Escolas.ObterPorIdAsync(dto.Id);
 			if (escolaExistente == null)
+			{
 				return null;
+			}
 
-			_mapeador.Map(dto, escolaExistente);
+			dto.Adapt(escolaExistente);
 			escolaExistente.DataAtualizacao = DateTime.UtcNow;
 
 			await _unitOfWork.Escolas.AtualizarAsync(escolaExistente);
 			await _unitOfWork.SalvarMudancasAsync();
 
-			return _mapeador.Map<EscolaDTO>(escolaExistente);
+			return escolaExistente.Adapt<EscolaDTO>();
 		}
 
 		public async Task<bool> RemoverAsync(Guid id)
 		{
 			var escola = await _unitOfWork.Escolas.ObterPorIdAsync(id);
 			if (escola == null)
+			{
 				return false;
+			}
 
 			escola.Ativo = false;
 			escola.DataAtualizacao = DateTime.UtcNow;

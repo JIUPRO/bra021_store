@@ -1,9 +1,9 @@
-using AutoMapper;
-using System.Security.Cryptography;
-using System.Text;
+using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Dominio.Entidades;
 using LojaVirtual.Dominio.Interfaces;
-using LojaVirtual.Aplicacao.DTOs;
+using Mapster;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace LojaVirtual.Aplicacao.Services
 {
@@ -23,18 +23,16 @@ namespace LojaVirtual.Aplicacao.Services
 	public class ClienteService : IClienteService
 	{
 		private readonly IUnitOfWork _unitOfWork;
-		private readonly IMapper _mapeador;
 
-		public ClienteService(IUnitOfWork unitOfWork, IMapper mapeador)
+		public ClienteService(IUnitOfWork unitOfWork)
 		{
 			_unitOfWork = unitOfWork;
-			_mapeador = mapeador;
 		}
 
 		public async Task<IEnumerable<ClienteDTO>> ObterTodosAsync()
 		{
 			var clientes = await _unitOfWork.Clientes.ObterTodosAsync();
-			return _mapeador.Map<IEnumerable<ClienteDTO>>(clientes);
+			return clientes.Adapt<IEnumerable<ClienteDTO>>();
 		}
 
 		public async Task<IEnumerable<ClienteDTO>> ObterTodosComPedidosAsync()
@@ -44,10 +42,8 @@ namespace LojaVirtual.Aplicacao.Services
 
 			foreach (var cliente in clientes)
 			{
-				var pedidos = await _unitOfWork.Pedidos.ObterPorClienteAsync(cliente.Id);
-				var dto = _mapeador.Map<ClienteDTO>(cliente);
-				// Assumindo que ClienteDTO tem uma propriedade QuantidadePedidos
-				resultado.Add(dto);
+				await _unitOfWork.Pedidos.ObterPorClienteAsync(cliente.Id);
+				resultado.Add(cliente.Adapt<ClienteDTO>());
 			}
 
 			return resultado;
@@ -56,29 +52,28 @@ namespace LojaVirtual.Aplicacao.Services
 		public async Task<ClienteDTO?> ObterPorEmailAsync(string email)
 		{
 			var cliente = await _unitOfWork.Clientes.ObterPorEmailAsync(email);
-			return cliente == null ? null : _mapeador.Map<ClienteDTO>(cliente);
+			return cliente?.Adapt<ClienteDTO>();
 		}
 
 		public async Task<ClienteDTO?> ObterPorIdAsync(Guid id)
 		{
 			var cliente = await _unitOfWork.Clientes.ObterPorIdAsync(id);
-			return cliente == null ? null : _mapeador.Map<ClienteDTO>(cliente);
+			return cliente?.Adapt<ClienteDTO>();
 		}
 
 		public async Task<ClienteDTO?> ObterPorCpfAsync(string cpf)
 		{
 			var cliente = await _unitOfWork.Clientes.ObterPorCpfAsync(cpf);
-			return cliente == null ? null : _mapeador.Map<ClienteDTO>(cliente);
+			return cliente?.Adapt<ClienteDTO>();
 		}
 
 		public async Task<ClienteDTO> CriarAsync(CriarClienteDTO dto)
 		{
-			var cliente = _mapeador.Map<Cliente>(dto);
+			var cliente = dto.Adapt<Cliente>();
 			cliente.DataCriacao = DateTime.UtcNow;
 			cliente.Ativo = true;
 			cliente.EmailConfirmado = false;
 
-			// Hash da senha
 			if (!string.IsNullOrEmpty(dto.Senha))
 			{
 				cliente.SenhaHash = GerarHashSenha(dto.Senha);
@@ -87,29 +82,33 @@ namespace LojaVirtual.Aplicacao.Services
 			await _unitOfWork.Clientes.AdicionarAsync(cliente);
 			await _unitOfWork.SalvarMudancasAsync();
 
-			return _mapeador.Map<ClienteDTO>(cliente);
+			return cliente.Adapt<ClienteDTO>();
 		}
 
 		public async Task<ClienteDTO?> AtualizarAsync(AtualizarClienteDTO dto)
 		{
 			var clienteExistente = await _unitOfWork.Clientes.ObterPorIdAsync(dto.Id);
 			if (clienteExistente == null)
+			{
 				return null;
+			}
 
-			_mapeador.Map(dto, clienteExistente);
+			dto.Adapt(clienteExistente);
 			clienteExistente.DataAtualizacao = DateTime.UtcNow;
 
 			await _unitOfWork.Clientes.AtualizarAsync(clienteExistente);
 			await _unitOfWork.SalvarMudancasAsync();
 
-			return _mapeador.Map<ClienteDTO>(clienteExistente);
+			return clienteExistente.Adapt<ClienteDTO>();
 		}
 
 		public async Task<bool> RemoverAsync(Guid id)
 		{
 			var cliente = await _unitOfWork.Clientes.ObterPorIdAsync(id);
 			if (cliente == null)
+			{
 				return false;
+			}
 
 			cliente.Ativo = false;
 			cliente.DataAtualizacao = DateTime.UtcNow;
@@ -123,13 +122,17 @@ namespace LojaVirtual.Aplicacao.Services
 		{
 			var cliente = await _unitOfWork.Clientes.ObterPorEmailAsync(dto.Email);
 			if (cliente == null)
+			{
 				return null;
+			}
 
 			var hashSenha = GerarHashSenha(dto.Senha);
 			if (cliente.SenhaHash != hashSenha)
+			{
 				return null;
+			}
 
-			return _mapeador.Map<ClienteDTO>(cliente);
+			return cliente.Adapt<ClienteDTO>();
 		}
 
 		private static string GerarHashSenha(string senha)
