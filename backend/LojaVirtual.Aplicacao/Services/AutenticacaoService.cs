@@ -246,6 +246,101 @@ namespace LojaVirtual.Aplicacao.Services
 			}
 		}
 
+		public async Task<(bool sucesso, string mensagem)> EsqueceuSenhaUsuarioAsync(EsqueceuSenhaDTO dto)
+		{
+			try
+			{
+				if (string.IsNullOrWhiteSpace(dto.Email))
+				{
+					return (false, "Email é obrigatório");
+				}
+
+				var usuario = await _unitOfWork.Usuarios.ObterPorEmailAsync(dto.Email);
+				if (usuario == null)
+				{
+					_logger?.LogInformation($"Tentativa de reset de senha de usuário com email inexistente: {dto.Email}");
+					return (true, "Foi enviado o codigo pro seu email");
+				}
+
+				var codigo = GerarCodigoAlfanumerico(6);
+				var tokensAntigos = await _unitOfWork.UsuariosTrocaSenha.ObterPorUsuarioIdAsync(usuario.Id);
+				foreach (var tokenAntigo in tokensAntigos.Where(t => !t.Utilizado))
+				{
+					await _unitOfWork.UsuariosTrocaSenha.RemoverAsync(tokenAntigo.Id);
+				}
+
+				var usuarioTrocaSenha = new UsuarioTrocaSenha(usuario.Id, usuario.Email, codigo);
+				await _unitOfWork.UsuariosTrocaSenha.AdicionarAsync(usuarioTrocaSenha);
+				await _unitOfWork.SalvarMudancasAsync();
+
+				if (_notificacaoService != null)
+				{
+					await _notificacaoService.EnviarEmailRecuperacaoSenhaAsync(usuario.Email, codigo);
+				}
+
+				_logger?.LogInformation($"Código de reset de usuário gerado para: {dto.Email} - Código: {codigo}");
+				return (true, "Foi enviado o codigo pro seu email");
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogError($"Erro ao processar esqueceu senha de usuário: {ex.Message}");
+				return (false, "Erro ao processar solicitação");
+			}
+		}
+
+		public async Task<(bool sucesso, string mensagem)> ResetarSenhaUsuarioAsync(ResetarSenhaDTO dto)
+		{
+			try
+			{
+				if (string.IsNullOrWhiteSpace(dto.Email) ||
+					string.IsNullOrWhiteSpace(dto.Codigo) ||
+					string.IsNullOrWhiteSpace(dto.NovaSenha))
+				{
+					return (false, "Email, código e nova senha são obrigatórios");
+				}
+
+				if (dto.NovaSenha != dto.ConfirmaSenha)
+				{
+					return (false, "Senhas não correspondem");
+				}
+
+				if (dto.NovaSenha.Length < 6)
+				{
+					return (false, "Senha deve ter no mínimo 6 caracteres");
+				}
+
+				var usuarioTrocaSenha = await _unitOfWork.UsuariosTrocaSenha.ObterPorEmailECodigoAsync(dto.Email, dto.Codigo);
+				if (usuarioTrocaSenha == null || !usuarioTrocaSenha.EstaValido())
+				{
+					return (false, "Código inválido ou expirado");
+				}
+
+				var usuario = await _unitOfWork.Usuarios.ObterPorIdAsync(usuarioTrocaSenha.UsuarioId);
+				if (usuario == null)
+				{
+					return (false, "Usuário não encontrado");
+				}
+
+				usuario.SenhaHash = CriptografarSenha(dto.NovaSenha);
+				usuario.DataAtualizacao = DateTime.UtcNow;
+
+				await _unitOfWork.Usuarios.AtualizarAsync(usuario);
+
+				usuarioTrocaSenha.Utilizado = true;
+				await _unitOfWork.UsuariosTrocaSenha.AtualizarAsync(usuarioTrocaSenha);
+
+				await _unitOfWork.SalvarMudancasAsync();
+
+				_logger?.LogInformation($"Senha de usuário resetada para: {dto.Email}");
+				return (true, "Senha redefinida com sucesso");
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogError($"Erro ao resetar senha de usuário: {ex.Message}");
+				return (false, "Erro ao redefinir senha");
+			}
+		}
+
 		private static string GerarCodigoAlfanumerico(int tamanho)
 		{
 			const string caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

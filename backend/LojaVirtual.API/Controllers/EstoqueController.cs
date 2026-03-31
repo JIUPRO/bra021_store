@@ -267,6 +267,24 @@ namespace LojaVirtual.API.Controllers
 			return Ok(movimentacoes);
 		}
 
+		[HttpGet("movimentacoes/resumo")]
+		public async Task<ActionResult<ResumoMovimentacaoEstoqueDTO>> ConsultarMovimentacoes(
+			[FromQuery] Guid? produtoId,
+			[FromQuery] Guid? produtoTamanhoId,
+			[FromQuery] DateTime? dataInicio,
+			[FromQuery] DateTime? dataFim)
+		{
+			var resumo = await _estoqueService.ConsultarMovimentacoesAsync(new ConsultaMovimentacaoEstoqueDTO
+			{
+				ProdutoId = produtoId,
+				ProdutoTamanhoId = produtoTamanhoId,
+				DataInicio = dataInicio,
+				DataFim = dataFim
+			});
+
+			return Ok(resumo);
+		}
+
 		[HttpPost("movimentacoes")]
 		public async Task<ActionResult<MovimentacaoEstoqueDTO>> CriarMovimentacao([FromBody] CriarMovimentacaoEstoqueDTO dto)
 		{

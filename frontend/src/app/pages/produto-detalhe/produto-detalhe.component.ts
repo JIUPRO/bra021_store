@@ -75,17 +75,6 @@ import { Produto, ProdutoVariacao } from '../../models/produto.model';
           </div>
 
           <div class="row mb-4">
-            <div class="col-6">
-              <small class="text-muted d-block">Peso</small>
-              <span>{{ produto.peso }} kg</span>
-            </div>
-            <div class="col-6" *ngIf="produto.altura && produto.largura && produto.profundidade">
-              <small class="text-muted d-block">Dimensões</small>
-              <span>{{ produto.altura }} x {{ produto.largura }} x {{ produto.profundidade }} cm</span>
-            </div>
-          </div>
-
-          <div class="row mb-4">
             <div class="col-12">
               <small class="text-muted d-block">Prazo de entrega</small>
               <span>{{ produto.prazoEntregaDias }} dias</span>

@@ -11,10 +11,6 @@ export interface Produto {
   quantidadeEstoque: number;
   quantidadeMinimaEstoque: number;
   destaque: boolean;
-  peso: number;
-  altura?: number;
-  largura?: number;
-  profundidade?: number;
   ativo: boolean;
   categoriaId: string;
   nomeCategoria: string;

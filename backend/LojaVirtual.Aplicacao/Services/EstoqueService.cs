@@ -11,6 +11,7 @@ namespace LojaVirtual.Aplicacao.Services
 		Task<IEnumerable<MovimentacaoEstoqueDTO>> ObterTodasMovimentacoesAsync();
 		Task<IEnumerable<MovimentacaoEstoqueDTO>> ObterMovimentacoesPorProdutoAsync(Guid produtoId);
 		Task<IEnumerable<MovimentacaoEstoqueDTO>> ObterMovimentacoesPorPeriodoAsync(DateTime dataInicio, DateTime dataFim);
+		Task<ResumoMovimentacaoEstoqueDTO> ConsultarMovimentacoesAsync(ConsultaMovimentacaoEstoqueDTO filtro);
 		Task<MovimentacaoEstoqueDTO> RegistrarMovimentacaoAsync(CriarMovimentacaoEstoqueDTO dto);
 		Task<IEnumerable<AlertaEstoqueDTO>> ObterAlertasEstoqueBaixoAsync();
 		Task<ProdutoDTO?> AjustarEstoqueAsync(AjusteEstoqueDTO dto);
@@ -43,6 +44,86 @@ namespace LojaVirtual.Aplicacao.Services
 		{
 			var movimentacoes = await _unitOfWork.MovimentacoesEstoque.ObterPorPeriodoAsync(dataInicio, dataFim);
 			return movimentacoes.Adapt<IEnumerable<MovimentacaoEstoqueDTO>>();
+		}
+
+		public async Task<ResumoMovimentacaoEstoqueDTO> ConsultarMovimentacoesAsync(ConsultaMovimentacaoEstoqueDTO filtro)
+		{
+			var todasMovimentacoes = (await _unitOfWork.MovimentacoesEstoque.ObterTodosAsync()).ToList();
+
+			var movimentacoesBase = todasMovimentacoes.AsEnumerable();
+
+			if (filtro.ProdutoTamanhoId.HasValue)
+			{
+				movimentacoesBase = movimentacoesBase.Where(m => m.ProdutoTamanhoId == filtro.ProdutoTamanhoId.Value);
+			}
+			else if (filtro.ProdutoId.HasValue)
+			{
+				movimentacoesBase = movimentacoesBase.Where(m => m.ProdutoTamanho.ProdutoId == filtro.ProdutoId.Value);
+			}
+
+			var movimentacoesBaseList = movimentacoesBase
+				.OrderBy(m => m.DataMovimentacao)
+				.ToList();
+
+			var dataInicio = filtro.DataInicio;
+			var dataFim = filtro.DataFim;
+
+			if (dataFim.HasValue)
+			{
+				dataFim = dataFim.Value.Date.AddDays(1).AddTicks(-1);
+			}
+
+			var movimentacoesPeriodo = movimentacoesBaseList.AsEnumerable();
+
+			if (dataInicio.HasValue)
+			{
+				movimentacoesPeriodo = movimentacoesPeriodo.Where(m => m.DataMovimentacao >= dataInicio.Value);
+			}
+
+			if (dataFim.HasValue)
+			{
+				movimentacoesPeriodo = movimentacoesPeriodo.Where(m => m.DataMovimentacao <= dataFim.Value);
+			}
+
+			var movimentacoesPeriodoList = movimentacoesPeriodo
+				.OrderByDescending(m => m.DataMovimentacao)
+				.ToList();
+
+			var saldoAtual = movimentacoesBaseList
+				.GroupBy(m => m.ProdutoTamanhoId)
+				.Sum(g => g.OrderByDescending(m => m.DataMovimentacao).First().EstoqueAtual);
+
+			var saldoInicialPeriodo = 0;
+
+			if (dataInicio.HasValue)
+			{
+				saldoInicialPeriodo = movimentacoesBaseList
+					.GroupBy(m => m.ProdutoTamanhoId)
+					.Sum(g =>
+					{
+						var ordenadas = g.OrderBy(m => m.DataMovimentacao).ToList();
+						var ultimaAntesDoInicio = ordenadas.LastOrDefault(m => m.DataMovimentacao < dataInicio.Value);
+						if (ultimaAntesDoInicio != null)
+						{
+							return ultimaAntesDoInicio.EstoqueAtual;
+						}
+
+						var primeiraDepoisDoInicio = ordenadas.FirstOrDefault(m => m.DataMovimentacao >= dataInicio.Value);
+						return primeiraDepoisDoInicio?.EstoqueAnterior ?? 0;
+					});
+			}
+
+			return new ResumoMovimentacaoEstoqueDTO
+			{
+				ProdutoId = filtro.ProdutoId,
+				ProdutoTamanhoId = filtro.ProdutoTamanhoId,
+				DataInicio = filtro.DataInicio,
+				DataFim = filtro.DataFim,
+				SaldoInicialPeriodo = saldoInicialPeriodo,
+				SaldoAtual = saldoAtual,
+				TotalMovimentacoes = movimentacoesPeriodoList.Count,
+				Movimentacoes = movimentacoesPeriodoList.Adapt<List<MovimentacaoEstoqueDTO>>()
+			};
 		}
 
 		public async Task<MovimentacaoEstoqueDTO> RegistrarMovimentacaoAsync(CriarMovimentacaoEstoqueDTO dto)

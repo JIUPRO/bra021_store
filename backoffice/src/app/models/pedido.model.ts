@@ -31,11 +31,27 @@ export interface Pedido {
   valorFrete: number;
   valorDesconto: number;
   valorTotal: number;
+  prazoPreparacaoDias: number;
+  prazoEnvioDias: number;
   prazoEntregaDias: number;
   observacoes?: string;
   pagamentoId?: string;
   metodoPagamento?: string;
   notaFiscalUrl?: string;
+  notaFiscalKey?: string;
+  tipoEntrega?: string;
+  transportadoraFrete?: string;
+  servicoFrete?: string;
+  codigoServicoFrete?: string;
+  melhorEnvioPedidoId?: string;
+  melhorEnvioProtocolo?: string;
+  codigoRastreio?: string;
+  urlRastreio?: string;
+  urlEtiqueta?: string;
+  statusLogistico?: string;
+  dataEtiquetaGerada?: Date;
+  dataPostagem?: Date;
+  dataEntrega?: Date;
   nomeEntrega: string;
   telefoneEntrega: string;
   cepEntrega: string;
@@ -67,6 +83,10 @@ export interface CriarPedido {
   itens: CriarItemPedido[];
   valorFrete: number;
   valorDesconto: number;
+  tipoEntrega?: string;
+  transportadoraFrete?: string;
+  codigoServicoFrete?: string;
+  nomeServicoFrete?: string;
 }
 
 export interface AtualizarStatusPedido {
@@ -82,7 +102,16 @@ export interface ResumoPedido {
   nomeCliente: string;
   quantidadeItens: number;
   valorTotal: number;
+  prazoPreparacaoDias: number;
+  prazoEnvioDias: number;
   prazoEntregaDias: number;
   pagamentoId?: string;
   metodoPagamento?: string;
+  tipoEntrega?: string;
+  transportadoraFrete?: string;
+  servicoFrete?: string;
+  codigoRastreio?: string;
+  statusLogistico?: string;
+  dataPostagem?: Date;
+  dataEntrega?: Date;
 }

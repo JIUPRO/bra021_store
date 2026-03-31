@@ -89,27 +89,6 @@ import { ProdutoVariacoesComponent } from '../produto-variacoes/produto-variacoe
                   </div>
                 </div>
 
-                <div class="row">
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label">Peso (kg)</label>
-                    <input type="number" class="form-control" [(ngModel)]="produto.peso" name="peso" step="0.001">
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label">Altura (cm)</label>
-                    <input type="number" class="form-control" [(ngModel)]="produto.altura" name="altura" step="0.1">
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label">Largura (cm)</label>
-                    <input type="number" class="form-control" [(ngModel)]="produto.largura" name="largura" step="0.1">
-                  </div>
-                </div>
-
-                <div class="row">
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label">Profundidade (cm)</label>
-                    <input type="number" class="form-control" [(ngModel)]="produto.profundidade" name="profundidade" step="0.1">
-                  </div>
-                </div>
               </div>
 
               <!-- Estoque e Configurações -->
@@ -144,15 +123,54 @@ import { ProdutoVariacoesComponent } from '../produto-variacoes/produto-variacoe
                 <div class="mb-3">
                   <div class="border rounded p-3">
                     <div class="text-center mb-2">
-                      <img
-                        [src]="produto.imagemUrl || 'assets/produto-sem-imagem.jpg'"
-                        class="img-fluid"
-                        style="max-height: 150px;"
-                      >
+                      <ng-container *ngIf="produto.imagemUrl; else semImagemProduto">
+                        <img
+                          [src]="produto.imagemUrl"
+                          class="img-fluid"
+                          style="max-height: 150px;"
+                        >
+                      </ng-container>
+                      <ng-template #semImagemProduto>
+                        <div class="imagem-placeholder">
+                          <i class="bi bi-image"></i>
+                          <span>Sem imagem</span>
+                        </div>
+                      </ng-template>
                     </div>
-                    <label class="form-label">URL da Imagem</label>
-                    <input type="url" class="form-control" [(ngModel)]="produto.imagemUrl" name="imagemUrl" placeholder="https://exemplo.com/imagem.jpg">
-                    <small class="form-text text-muted">Por enquanto cole a URL retornada pela API de upload. Futuramente teremos upload direto.</small>
+                    <label class="form-label">Imagem do Produto</label>
+                    <input
+                      type="file"
+                      class="form-control"
+                      accept="image/jpeg,image/png,image/webp"
+                      (change)="onArquivoSelecionado($event)">
+                    <small class="form-text text-muted d-block mt-2">
+                      <ng-container *ngIf="editando; else dicaNovoProduto">
+                        Arquivos JPG, PNG ou WEBP. Selecione a imagem e use o botão abaixo para enviar.
+                      </ng-container>
+                      <ng-template #dicaNovoProduto>
+                        Arquivos JPG, PNG ou WEBP. No cadastro, a imagem será enviada após criar o produto.
+                      </ng-template>
+                    </small>
+                    <div class="d-flex gap-2 align-items-center mt-3">
+                      <button
+                        *ngIf="editando"
+                        type="button"
+                        class="btn btn-outline-success btn-sm"
+                        (click)="enviarImagemSelecionada()"
+                        [disabled]="!arquivoImagemSelecionado || enviandoImagem">
+                        <span *ngIf="!enviandoImagem"><i class="bi bi-upload me-1"></i>{{ produto.imagemUrl ? 'Atualizar imagem' : 'Enviar imagem' }}</span>
+                        <span *ngIf="enviandoImagem"><span class="spinner-border spinner-border-sm me-1"></span>Enviando...</span>
+                      </button>
+                      <button
+                        *ngIf="editando && produto.imagemUrl"
+                        type="button"
+                        class="btn btn-outline-danger btn-sm"
+                        (click)="removerImagem()"
+                        [disabled]="removendoImagem">
+                        <span *ngIf="!removendoImagem"><i class="bi bi-trash me-1"></i>Remover imagem</span>
+                        <span *ngIf="removendoImagem"><span class="spinner-border spinner-border-sm me-1"></span>Removendo...</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -192,6 +210,24 @@ import { ProdutoVariacoesComponent } from '../produto-variacoes/produto-variacoe
       border-color: #0d6efd;
       box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
     }
+
+    .imagem-placeholder {
+      min-height: 150px;
+      border: 1px dashed #c8d8cc;
+      border-radius: 12px;
+      background: #f6fbf7;
+      color: #5f7a66;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .imagem-placeholder i {
+      font-size: 2rem;
+      color: #6ea07b;
+    }
   `]
 })
 export class ProdutoFormComponent implements OnInit {
@@ -207,6 +243,9 @@ export class ProdutoFormComponent implements OnInit {
 
   // variações locais (usadas durante criação ou para manter sincronia)
   variacoes: ProdutoTamanhoDTO[] = [];
+  arquivoImagemSelecionado: File | null = null;
+  enviandoImagem = false;
+  removendoImagem = false;
 
   produto = {
     nome: '',
@@ -217,10 +256,6 @@ export class ProdutoFormComponent implements OnInit {
     precoPromocional: null as number | null,
     valorFrete: 0,
     prazoEntregaDias: 0,
-    peso: 0,
-    altura: null as number | null,
-    largura: null as number | null,
-    profundidade: null as number | null,
     estoqueMinimo: 5,
     ativo: true,
     destaque: false,
@@ -267,10 +302,6 @@ export class ProdutoFormComponent implements OnInit {
           precoPromocional: p.precoPromocional ?? null,
           valorFrete: p.valorFrete || 0,
           prazoEntregaDias: p.prazoEntregaDias || 0,
-          peso: p.peso || 0,
-          altura: p.altura ?? null,
-          largura: p.largura ?? null,
-          profundidade: p.profundidade ?? null,
           estoqueMinimo: p.quantidadeMinimaEstoque || 5,
           ativo: p.ativo ?? true,
           destaque: p.destaque ?? false,
@@ -296,10 +327,6 @@ export class ProdutoFormComponent implements OnInit {
       precoPromocional: this.produto.precoPromocional,
       valorFrete: this.produto.valorFrete,
       prazoEntregaDias: this.produto.prazoEntregaDias,
-      peso: this.produto.peso,
-      altura: this.produto.altura,
-      largura: this.produto.largura,
-      profundidade: this.produto.profundidade,
       quantidadeMinimaEstoque: this.produto.estoqueMinimo,
       ativo: this.produto.ativo,
       destaque: this.produto.destaque,
@@ -323,7 +350,7 @@ export class ProdutoFormComponent implements OnInit {
 
     // criando novo produto: primeiro cria produto, depois cria variações (se houver)
     this.produtoService.create(produtoDTO).subscribe({
-      next: (created: ProdutoDTO) => {
+      next: async (created: ProdutoDTO) => {
         // se houver variações locais, persistir cada uma com o produtoId criado
         if (this.variacoes.length > 0) {
           // criar variações sequencialmente via Promises
@@ -332,7 +359,8 @@ export class ProdutoFormComponent implements OnInit {
             return firstValueFrom(this.produtoTamanhoService.create(v));
           });
 
-          Promise.all(criarPromises).then(() => {
+          Promise.all(criarPromises).then(async () => {
+            await this.processarUploadImagemSeNecessario(created.id);
             this.alertService.success('Produto criado', 'Produto criado com sucesso!').then(() => {
               this.router.navigate(['/produtos']);
             });
@@ -343,6 +371,7 @@ export class ProdutoFormComponent implements OnInit {
             });
           });
         } else {
+          await this.processarUploadImagemSeNecessario(created.id);
           this.alertService.success('Produto criado', 'Produto criado com sucesso!').then(() => {
             this.router.navigate(['/produtos']);
           });
@@ -353,5 +382,67 @@ export class ProdutoFormComponent implements OnInit {
         this.alertService.error('Erro ao salvar produto', 'Tente novamente');
       }
     });
+  }
+
+  onArquivoSelecionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.arquivoImagemSelecionado = input.files?.[0] ?? null;
+  }
+
+  enviarImagemSelecionada(): void {
+    if (!this.editando || !this.produtoId || !this.arquivoImagemSelecionado) {
+      return;
+    }
+
+    this.enviandoImagem = true;
+    this.produtoService.uploadImagem(this.produtoId, this.arquivoImagemSelecionado).subscribe({
+      next: (resposta) => {
+        this.produto.imagemUrl = resposta?.imagemUrl || this.produto.imagemUrl;
+        this.arquivoImagemSelecionado = null;
+        this.enviandoImagem = false;
+        this.alertService.success('Imagem atualizada', 'A imagem do produto foi enviada com sucesso.');
+      },
+      error: (err) => {
+        console.error('Erro enviando imagem', err);
+        this.enviandoImagem = false;
+        this.alertService.error('Erro ao enviar imagem', 'Tente novamente');
+      }
+    });
+  }
+
+  removerImagem(): void {
+    if (!this.produtoId || !this.produto.imagemUrl) {
+      return;
+    }
+
+    this.alertService.confirm('Remover imagem', 'Deseja remover a imagem atual deste produto?').then(confirmado => {
+      if (!confirmado) {
+        return;
+      }
+
+      this.removendoImagem = true;
+      this.produtoService.removerImagem(this.produtoId!).subscribe({
+        next: () => {
+          this.produto.imagemUrl = '';
+          this.removendoImagem = false;
+          this.alertService.success('Imagem removida', 'A imagem do produto foi removida com sucesso.');
+        },
+        error: (err) => {
+          console.error('Erro removendo imagem', err);
+          this.removendoImagem = false;
+          this.alertService.error('Erro ao remover imagem', 'Tente novamente');
+        }
+      });
+    });
+  }
+
+  private async processarUploadImagemSeNecessario(produtoId: string): Promise<void> {
+    if (!this.arquivoImagemSelecionado) {
+      return;
+    }
+
+    const resposta = await firstValueFrom(this.produtoService.uploadImagem(produtoId, this.arquivoImagemSelecionado));
+    this.produto.imagemUrl = resposta?.imagemUrl || this.produto.imagemUrl;
+    this.arquivoImagemSelecionado = null;
   }
 }

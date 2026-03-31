@@ -86,6 +86,9 @@ import { Pedido, StatusPedido } from '../../models/pedido.model';
                 <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>Endereço de Entrega</h5>
               </div>
               <div class="card-body">
+                <p class="mb-2 text-muted">
+                  <strong>Tipo de entrega:</strong> {{ pedido.tipoEntrega || 'N/A' }}
+                </p>
                 <p><strong>{{ pedido.nomeEntrega }}</strong></p>
                 <p class="mb-2">
                   {{ pedido.logradouroEntrega }}, {{ pedido.numeroEntrega }}
@@ -113,6 +116,31 @@ import { Pedido, StatusPedido } from '../../models/pedido.model';
                 </p>
                 <a [href]="pedido.notaFiscalUrl" target="_blank" class="btn btn-success btn-sm">
                   <i class="bi bi-download me-1"></i>Baixar Nota Fiscal
+                </a>
+              </div>
+            </div>
+
+            <!-- Rastreio -->
+            <div *ngIf="mostrarRastreio()" class="card mb-4 border-info">
+              <div class="card-header bg-light border-info">
+                <h5 class="mb-0 text-info">
+                  <i class="bi bi-truck me-2"></i>Acompanhar Entrega
+                </h5>
+              </div>
+              <div class="card-body">
+                <p *ngIf="pedido.codigoRastreio" class="mb-2">
+                  <strong>Código de rastreio:</strong> {{ pedido.codigoRastreio }}
+                </p>
+                <p *ngIf="pedido.dataPostagem" class="text-muted mb-3">
+                  Postado em {{ pedido.dataPostagem | date:'dd/MM/yyyy HH:mm' }}
+                </p>
+                <a
+                  *ngIf="pedido.urlRastreio"
+                  [href]="pedido.urlRastreio"
+                  target="_blank"
+                  rel="noopener"
+                  class="btn btn-outline-info btn-sm">
+                  <i class="bi bi-box-arrow-up-right me-1"></i>Acompanhar pedido
                 </a>
               </div>
             </div>
@@ -147,7 +175,15 @@ import { Pedido, StatusPedido } from '../../models/pedido.model';
                   <span>Prazo de entrega</span>
                   <span class="text-muted">{{ pedido.prazoEntregaDias }} dias</span>
                 </div>
-                <div class="d-flex justify-content-between mb-3">
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Transportadora</span>
+                  <span class="text-muted">{{ pedido.transportadoraFrete || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Serviço</span>
+                  <span class="text-muted">{{ pedido.servicoFrete || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-3" *ngIf="pedido.valorDesconto > 0">
                   <span>Desconto</span>
                   <span class="text-success">- R$ {{ pedido.valorDesconto | number:'1.2-2' }}</span>
                 </div>
@@ -265,6 +301,12 @@ export class PedidoDetalheComponent implements OnInit {
       default:
         return 'bg-secondary';
     }
+  }
+
+  mostrarRastreio(): boolean {
+    return !!this.pedido &&
+      this.pedido.status >= StatusPedido.Enviado &&
+      (!!this.pedido.codigoRastreio || !!this.pedido.urlRastreio);
   }
 
   voltar(): void {

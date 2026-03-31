@@ -7,6 +7,10 @@ export interface ProdutoTamanhoDTO {
   id?: string;
   produtoId: string;
   tamanho: string;
+  peso: number;
+  altura?: number | null;
+  largura?: number | null;
+  profundidade?: number | null;
   ativo: boolean;
 }
 

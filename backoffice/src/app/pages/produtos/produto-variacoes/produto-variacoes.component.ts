@@ -17,13 +17,53 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
 
       <div class="mb-3">
         <div class="row g-2">
-          <div class="col-md-12">
+          <div class="col-md-3">
             <label class="form-label">Tamanho</label>
             <input 
               type="text" 
               class="form-control" 
               [(ngModel)]="novaVariacao.tamanho"
               placeholder="Ex: P, M, G, GG ou A1, A2, A3, A4"
+            >
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Peso (kg)</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="novaVariacao.peso"
+              step="0.001"
+              min="0"
+            >
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Altura (cm)</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="novaVariacao.altura"
+              step="0.1"
+              min="0"
+            >
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Largura (cm)</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="novaVariacao.largura"
+              step="0.1"
+              min="0"
+            >
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Profundidade (cm)</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="novaVariacao.profundidade"
+              step="0.1"
+              min="0"
             >
           </div>
         </div>
@@ -33,7 +73,7 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
         type="button" 
         class="btn btn-sm btn-primary mb-3"
         (click)="adicionarVariacao()"
-        [disabled]="!novaVariacao.tamanho"
+        [disabled]="!novaVariacao.tamanho || novaVariacao.peso <= 0"
       >
         <i class="bi bi-plus-lg me-2"></i>Adicionar Tamanho
       </button>
@@ -43,6 +83,10 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
           <thead class="bg-light">
             <tr>
               <th>Tamanho</th>
+              <th>Peso</th>
+              <th>Altura</th>
+              <th>Largura</th>
+              <th>Profundidade</th>
               <th>Status</th>
               <th>Ações</th>
             </tr>
@@ -50,7 +94,44 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
           <tbody>
             <tr *ngFor="let v of variacoesPaginadas">
               <td>
-                <strong>{{ v.tamanho }}</strong>
+                <ng-container *ngIf="editandoId !== v.id; else editarTamanho">
+                  <strong>{{ v.tamanho }}</strong>
+                </ng-container>
+                <ng-template #editarTamanho>
+                  <input type="text" class="form-control form-control-sm" [(ngModel)]="v.tamanho">
+                </ng-template>
+              </td>
+              <td>
+                <ng-container *ngIf="editandoId !== v.id; else editarPeso">
+                  {{ v.peso | number:'1.3-3' }} kg
+                </ng-container>
+                <ng-template #editarPeso>
+                  <input type="number" class="form-control form-control-sm" [(ngModel)]="v.peso" step="0.001" min="0">
+                </ng-template>
+              </td>
+              <td>
+                <ng-container *ngIf="editandoId !== v.id; else editarAltura">
+                  {{ v.altura ?? 0 }} cm
+                </ng-container>
+                <ng-template #editarAltura>
+                  <input type="number" class="form-control form-control-sm" [(ngModel)]="v.altura" step="0.1" min="0">
+                </ng-template>
+              </td>
+              <td>
+                <ng-container *ngIf="editandoId !== v.id; else editarLargura">
+                  {{ v.largura ?? 0 }} cm
+                </ng-container>
+                <ng-template #editarLargura>
+                  <input type="number" class="form-control form-control-sm" [(ngModel)]="v.largura" step="0.1" min="0">
+                </ng-template>
+              </td>
+              <td>
+                <ng-container *ngIf="editandoId !== v.id; else editarProfundidade">
+                  {{ v.profundidade ?? 0 }} cm
+                </ng-container>
+                <ng-template #editarProfundidade>
+                  <input type="number" class="form-control form-control-sm" [(ngModel)]="v.profundidade" step="0.1" min="0">
+                </ng-template>
               </td>
               <td>
                 <span class="badge" [class]="v.ativo ? 'bg-success' : 'bg-secondary'">
@@ -149,6 +230,10 @@ export class ProdutoVariacoesComponent implements OnInit {
   novaVariacao: ProdutoTamanhoDTO = {
     produtoId: '',
     tamanho: '',
+    peso: 0,
+    altura: null,
+    largura: null,
+    profundidade: null,
     ativo: true
   };
 
@@ -181,6 +266,11 @@ export class ProdutoVariacoesComponent implements OnInit {
       return;
     }
 
+    if (!this.novaVariacao.peso || this.novaVariacao.peso <= 0) {
+      this.alertService.warning('Atenção', 'Informe o peso do tamanho');
+      return;
+    }
+
     // Se o produto já existe, cria via API
     if (this.produtoId) {
       this.novaVariacao.produtoId = this.produtoId;
@@ -191,6 +281,10 @@ export class ProdutoVariacoesComponent implements OnInit {
           this.novaVariacao = {
             produtoId: '',
             tamanho: '',
+            peso: 0,
+            altura: null,
+            largura: null,
+            profundidade: null,
             ativo: true
           };
           this.variacoesChange.emit(this.variacoes);
@@ -210,6 +304,10 @@ export class ProdutoVariacoesComponent implements OnInit {
     this.novaVariacao = {
       produtoId: '',
       tamanho: '',
+      peso: 0,
+      altura: null,
+      largura: null,
+      profundidade: null,
       ativo: true
     };
     this.variacoesChange.emit(this.variacoes);
@@ -222,6 +320,11 @@ export class ProdutoVariacoesComponent implements OnInit {
 
   salvarVariacao(variacao: ProdutoTamanhoDTO): void {
     if (!variacao.id) return;
+
+    if (!variacao.peso || variacao.peso <= 0) {
+      this.alertService.warning('Atenção', 'Informe o peso do tamanho');
+      return;
+    }
 
     // variação local (sem id persistido no servidor)
     if (variacao.id.toString().startsWith('local-')) {

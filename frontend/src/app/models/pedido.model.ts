@@ -31,10 +31,25 @@ export interface Pedido {
   valorFrete: number;
   valorDesconto: number;
   valorTotal: number;
+  prazoPreparacaoDias: number;
+  prazoEnvioDias: number;
   prazoEntregaDias: number;
   observacoes?: string;
   metodoPagamento?: string;
   notaFiscalUrl?: string;
+  tipoEntrega?: string;
+  transportadoraFrete?: string;
+  servicoFrete?: string;
+  codigoServicoFrete?: string;
+  melhorEnvioPedidoId?: string;
+  melhorEnvioProtocolo?: string;
+  codigoRastreio?: string;
+  urlRastreio?: string;
+  urlEtiqueta?: string;
+  statusLogistico?: string;
+  dataEtiquetaGerada?: Date;
+  dataPostagem?: Date;
+  dataEntrega?: Date;
   nomeEntrega: string;
   telefoneEntrega: string;
   cepEntrega: string;
@@ -62,6 +77,8 @@ export interface CriarPedido {
   itens: CriarItemPedido[];
   valorFrete: number;
   valorDesconto: number;
+  prazoPreparacaoDias: number;
+  prazoEnvioDias: number;
   prazoEntregaDias: number;
   observacoes?: string;
   nomeEntrega: string;
@@ -73,6 +90,11 @@ export interface CriarPedido {
   bairroEntrega: string;
   cidadeEntrega: string;
   estadoEntrega: string;
+  tipoEntrega?: string;
+  providerFrete?: string;
+  transportadoraFrete?: string;
+  codigoServicoFrete?: string;
+  nomeServicoFrete?: string;
 }
 
 export interface ResumoPedido {
@@ -83,9 +105,18 @@ export interface ResumoPedido {
   statusDescricao: string;
   valorTotal: number;
   quantidadeItens: number;
+  prazoPreparacaoDias: number;
+  prazoEnvioDias: number;
   prazoEntregaDias: number;
   nomeCliente: string;
   metodoPagamento?: string;
+  tipoEntrega?: string;
+  transportadoraFrete?: string;
+  servicoFrete?: string;
+  codigoRastreio?: string;
+  statusLogistico?: string;
+  dataPostagem?: Date;
+  dataEntrega?: Date;
   produtos?: Array<{
     nome: string;
     tamanho?: string;

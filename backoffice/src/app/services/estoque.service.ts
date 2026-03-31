@@ -26,6 +26,17 @@ export interface AlertaEstoqueDTO {
   diferenca: number;
 }
 
+export interface ResumoMovimentacaoEstoqueDTO {
+  produtoId?: string | null;
+  produtoTamanhoId?: string | null;
+  dataInicio?: string | null;
+  dataFim?: string | null;
+  saldoInicialPeriodo: number;
+  saldoAtual: number;
+  totalMovimentacoes: number;
+  movimentacoes: MovimentacaoEstoqueDTO[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class EstoqueService {
   private http = inject(HttpClient);
@@ -33,6 +44,34 @@ export class EstoqueService {
 
   getMovimentacoes(): Observable<MovimentacaoEstoqueDTO[]> {
     return this.http.get<MovimentacaoEstoqueDTO[]>(`${this.baseUrl}/movimentacoes`);
+  }
+
+  consultarMovimentacoes(params: {
+    produtoId?: string;
+    produtoTamanhoId?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  }): Observable<ResumoMovimentacaoEstoqueDTO> {
+    const query = new URLSearchParams();
+
+    if (params.produtoId) {
+      query.set('produtoId', params.produtoId);
+    }
+
+    if (params.produtoTamanhoId) {
+      query.set('produtoTamanhoId', params.produtoTamanhoId);
+    }
+
+    if (params.dataInicio) {
+      query.set('dataInicio', params.dataInicio);
+    }
+
+    if (params.dataFim) {
+      query.set('dataFim', params.dataFim);
+    }
+
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.http.get<ResumoMovimentacaoEstoqueDTO>(`${this.baseUrl}/movimentacoes/resumo${suffix}`);
   }
 
   getAlertas(): Observable<AlertaEstoqueDTO[]> {

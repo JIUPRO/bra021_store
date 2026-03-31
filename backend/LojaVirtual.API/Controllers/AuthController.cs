@@ -258,5 +258,64 @@ namespace LojaVirtual.API.Controllers
 				return StatusCode(500, "Erro ao redefinir senha");
 			}
 		}
+
+		[AllowAnonymous]
+		[HttpPost("usuarios/esqueceu-senha")]
+		public async Task<ActionResult> EsqueceuSenhaUsuario([FromBody] EsqueceuSenhaDTO dto)
+		{
+			try
+			{
+				if (string.IsNullOrEmpty(dto.Email))
+				{
+					return BadRequest("Email é obrigatório");
+				}
+
+				var (sucesso, mensagem) = await _AutenticacaoService.EsqueceuSenhaUsuarioAsync(dto);
+				return Ok(new { sucesso = true, mensagem = "Foi enviado o codigo pro seu email" });
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Erro ao processar esqueceu senha de usuário");
+				return Ok(new { sucesso = true, mensagem = "Foi enviado o codigo pro seu email" });
+			}
+		}
+
+		[AllowAnonymous]
+		[HttpPost("usuarios/resetar-senha")]
+		public async Task<ActionResult> ResetarSenhaUsuario([FromBody] ResetarSenhaDTO dto)
+		{
+			try
+			{
+				if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Codigo) ||
+					string.IsNullOrEmpty(dto.NovaSenha) || string.IsNullOrEmpty(dto.ConfirmaSenha))
+				{
+					return BadRequest("Email, código, nova senha e confirmação são obrigatórios");
+				}
+
+				if (dto.NovaSenha != dto.ConfirmaSenha)
+				{
+					return BadRequest("As senhas não correspondem");
+				}
+
+				if (dto.NovaSenha.Length < 6)
+				{
+					return BadRequest("A senha deve ter no mínimo 6 caracteres");
+				}
+
+				var (sucesso, mensagem) = await _AutenticacaoService.ResetarSenhaUsuarioAsync(dto);
+
+				if (!sucesso)
+				{
+					return BadRequest(new { sucesso, mensagem });
+				}
+
+				return Ok(new { sucesso, mensagem = "Senha redefinida com sucesso. Faça login com sua nova senha." });
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Erro ao resetar senha de usuário");
+				return StatusCode(500, "Erro ao redefinir senha");
+			}
+		}
 	}
 }

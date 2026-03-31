@@ -27,6 +27,17 @@ export interface CadastroRequest {
   senha: string;
 }
 
+export interface RecuperacaoSenhaRequest {
+  email: string;
+}
+
+export interface ResetarSenhaRequest {
+  email: string;
+  codigo: string;
+  novaSenha: string;
+  confirmaSenha: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -119,5 +130,18 @@ export class AuthService {
 
   criarUsuario(email: string, nome: string, senha: string): Observable<Usuario> {
     return this.http.post<Usuario>(`${this.apiUrl}/usuarios`, { email, nome, senha });
+  }
+
+  esqueceuSenhaUsuario(email: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/usuarios/esqueceu-senha`, { email });
+  }
+
+  resetarSenhaUsuario(email: string, codigo: string, novaSenha: string, confirmaSenha: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/usuarios/resetar-senha`, {
+      email,
+      codigo,
+      novaSenha,
+      confirmaSenha
+    });
   }
 }

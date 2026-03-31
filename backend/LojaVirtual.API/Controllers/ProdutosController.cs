@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using LojaVirtual.Aplicacao.DTOs;
 using LojaVirtual.Aplicacao.Services;
+using LojaVirtual.Infraestrutura.Services;
 
 namespace LojaVirtual.API.Controllers
 {
@@ -10,10 +11,12 @@ namespace LojaVirtual.API.Controllers
 	public class ProdutosController : ControllerBase
 	{
 		private readonly IProdutoService _produtoService;
+		private readonly IStorageService _storageService;
 
-		public ProdutosController(IProdutoService servicoProduto)
+		public ProdutosController(IProdutoService servicoProduto, IStorageService storageService)
 		{
 			_produtoService = servicoProduto;
+			_storageService = storageService;
 		}
 
 		[AllowAnonymous]
@@ -104,9 +107,91 @@ namespace LojaVirtual.API.Controllers
 		}
 
 		[Authorize]
-		[HttpDelete("{id}")]
-		public async Task<IActionResult> Remover(Guid id)
+		[HttpPost("{id}/imagem")]
+		public async Task<ActionResult<ProdutoDTO>> UploadImagem(Guid id, [FromForm] IFormFile file, CancellationToken cancellationToken)
 		{
+			if (file == null || file.Length == 0)
+			{
+				return BadRequest(new { mensagem = "Selecione uma imagem para enviar." });
+			}
+
+			var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+			if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+			{
+				return BadRequest(new { mensagem = "Envie apenas arquivos JPG, PNG ou WEBP." });
+			}
+
+			var produtoAtual = await _produtoService.ObterPorIdAsync(id);
+			if (produtoAtual == null)
+			{
+				return NotFound(new { mensagem = "Produto não encontrado" });
+			}
+
+			try
+			{
+				await using var stream = file.OpenReadStream();
+				var upload = await _storageService.UploadFileAsync(stream, file.FileName, file.ContentType, cancellationToken);
+				var produto = await _produtoService.AtualizarImagemAsync(id, upload.Url, upload.Key);
+				if (produto == null)
+				{
+					await _storageService.DeleteFileAsync(upload.Key, cancellationToken);
+					return NotFound(new { mensagem = "Produto não encontrado" });
+				}
+
+				if (!string.IsNullOrWhiteSpace(produtoAtual.ImagemKey) && produtoAtual.ImagemKey != upload.Key)
+				{
+					await _storageService.DeleteFileAsync(produtoAtual.ImagemKey, cancellationToken);
+				}
+
+				return Ok(produto);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new { mensagem = ex.Message });
+			}
+		}
+
+		[Authorize]
+		[HttpDelete("{id}/imagem")]
+		public async Task<ActionResult<ProdutoDTO>> RemoverImagem(Guid id, CancellationToken cancellationToken)
+		{
+			var produtoAtual = await _produtoService.ObterPorIdAsync(id);
+			if (produtoAtual == null)
+			{
+				return NotFound(new { mensagem = "Produto não encontrado" });
+			}
+
+			try
+			{
+				if (!string.IsNullOrWhiteSpace(produtoAtual.ImagemKey))
+				{
+					await _storageService.DeleteFileAsync(produtoAtual.ImagemKey, cancellationToken);
+				}
+
+				var produto = await _produtoService.AtualizarImagemAsync(id, null, null);
+				return Ok(produto);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new { mensagem = ex.Message });
+			}
+		}
+
+		[Authorize]
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> Remover(Guid id, CancellationToken cancellationToken)
+		{
+			var produtoAtual = await _produtoService.ObterPorIdAsync(id);
+			if (produtoAtual == null)
+			{
+				return NotFound(new { mensagem = "Produto não encontrado" });
+			}
+
+			if (!string.IsNullOrWhiteSpace(produtoAtual.ImagemKey))
+			{
+				await _storageService.DeleteFileAsync(produtoAtual.ImagemKey, cancellationToken);
+			}
+
 			var resultado = await _produtoService.RemoverAsync(id);
 			if (!resultado)
 				return NotFound(new { mensagem = "Produto não encontrado" });

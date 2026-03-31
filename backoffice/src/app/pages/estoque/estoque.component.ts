@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { EstoqueService, MovimentacaoEstoqueDTO, AlertaEstoqueDTO } from '../../services/estoque.service';
+import { EstoqueService, MovimentacaoEstoqueDTO, AlertaEstoqueDTO, ResumoMovimentacaoEstoqueDTO } from '../../services/estoque.service';
 import { ProdutoService, ProdutoDTO } from '../../services/produto.service';
 import { ProdutoTamanhoService, ProdutoTamanhoDTO } from '../../services/produto-variacao.service';
 import { AlertService } from '../../services/alert.service';
@@ -153,23 +153,78 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
       <div class="card card-dashboard">
         <div class="card-header bg-white">
           <div class="mb-3">
-            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Últimas Movimentações</h5>
+            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Movimentações de Estoque</h5>
           </div>
           
-          <!-- Filtro por Produto -->
-          <div class="row">
-            <div class="col-md-6">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label">Produto</label>
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <select class="form-select" [(ngModel)]="produtoFiltroId" (change)="aplicarFiltro()">
+                <select class="form-select" [(ngModel)]="produtoFiltroId" (change)="onProdutoFiltroChange()">
                   <option value="">Todos os produtos</option>
                   <option *ngFor="let produto of produtos" [value]="produto.id">
                     {{ produto.nome }}
                   </option>
                 </select>
-                <button class="btn btn-outline-secondary" (click)="limparFiltro()" *ngIf="produtoFiltroId">
-                  <i class="bi bi-x-lg"></i>
+              </div>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Tamanho</label>
+              <select class="form-select" [(ngModel)]="produtoTamanhoFiltroId" [disabled]="!produtoFiltroId || tamanhosFiltro.length === 0">
+                <option value="">{{ produtoFiltroId ? 'Todos os tamanhos' : 'Selecione o produto' }}</option>
+                <option *ngFor="let tamanho of tamanhosFiltro" [value]="tamanho.id">
+                  {{ tamanho.tamanho }}
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Data inicial</label>
+              <input type="date" class="form-control" [(ngModel)]="dataInicioFiltro" (ngModelChange)="onFiltroPeriodoChange()" [disabled]="!produtoFiltroId">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Data final</label>
+              <input type="date" class="form-control" [(ngModel)]="dataFimFiltro" (ngModelChange)="onFiltroPeriodoChange()" [disabled]="!produtoFiltroId">
+            </div>
+
+            <div class="col-md-3">
+              <div class="d-flex gap-2">
+                <button class="btn btn-success flex-grow-1" (click)="aplicarFiltro()">
+                  <i class="bi bi-funnel me-1"></i>Aplicar filtros
                 </button>
+                <button class="btn btn-outline-secondary" (click)="limparFiltro()">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Limpar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3" *ngIf="!produtoFiltroId">
+            <small class="text-muted">
+              Selecione um produto para consultar saldo e movimentações de estoque.
+            </small>
+          </div>
+
+          <div class="row g-3 mt-1" *ngIf="mostrarResumoPeriodo">
+            <div class="col-md-4">
+              <div class="resumo-card resumo-inicial">
+                <small class="text-muted d-block">Saldo na data inicial</small>
+                <strong>{{ resumoMovimentacoes.saldoInicialPeriodo }}</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="resumo-card resumo-movimentacoes">
+                <small class="text-muted d-block">Movimentações no período</small>
+                <strong>{{ resumoMovimentacoes.totalMovimentacoes }}</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="resumo-card resumo-atual">
+                <small class="text-muted d-block">Saldo atual</small>
+                <strong>{{ resumoMovimentacoes.saldoAtual }}</strong>
               </div>
             </div>
           </div>
@@ -188,7 +243,22 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let mov of movimentacoesPaginadas">
+                <tr *ngIf="!produtoFiltroId">
+                  <td colspan="6" class="text-center text-muted py-4">
+                    Selecione um produto para visualizar as movimentações de estoque.
+                  </td>
+                </tr>
+                <tr *ngIf="produtoFiltroId && !filtroAplicado">
+                  <td colspan="6" class="text-center text-muted py-4">
+                    Clique em <strong>Aplicar filtros</strong> para consultar as movimentações deste produto.
+                  </td>
+                </tr>
+                <tr *ngIf="produtoFiltroId && filtroAplicado && movimentacoesFiltradas.length === 0">
+                  <td colspan="6" class="text-center text-muted py-4">
+                    Nenhuma movimentação encontrada para os filtros informados.
+                  </td>
+                </tr>
+                <tr *ngFor="let mov of (filtroAplicado ? movimentacoesPaginadas : [])">
                   <td>{{ mov.dataMovimentacao | date:'dd/MM/yyyy HH:mm' }}</td>
                   <td>{{ mov.nomeProduto }}</td>
                   <td><span class="badge bg-secondary">{{ mov.tamanho }}</span></td>
@@ -206,7 +276,7 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
             </table>
           </div>
         </div>
-        <div class="card-footer bg-white">
+        <div class="card-footer bg-white" *ngIf="produtoFiltroId && filtroAplicado">
           <app-pagination
             [totalItens]="movimentacoesFiltradas.length"
             [paginaAtual]="paginaAtualMovimentacoes"
@@ -236,6 +306,34 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
       vertical-align: middle;
       padding: 16px;
     }
+
+    .resumo-card {
+      border-radius: 12px;
+      padding: 14px 16px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+    }
+
+    .resumo-card strong {
+      font-size: 1.5rem;
+      line-height: 1.2;
+      color: #14532d;
+    }
+
+    .resumo-inicial {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    .resumo-movimentacoes {
+      background: #f7fee7;
+      border-color: #d9f99d;
+    }
+
+    .resumo-atual {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+    }
   `]
 })
 export class EstoqueComponent implements OnInit {
@@ -250,9 +348,21 @@ export class EstoqueComponent implements OnInit {
   movimentacoes: MovimentacaoEstoqueDTO[] = [];
   movimentacoesFiltradas: MovimentacaoEstoqueDTO[] = [];
   movimentacoesPaginadas: MovimentacaoEstoqueDTO[] = [];
+  resumoMovimentacoes: ResumoMovimentacaoEstoqueDTO = {
+    saldoInicialPeriodo: 0,
+    saldoAtual: 0,
+    totalMovimentacoes: 0,
+    movimentacoes: []
+  };
+  mostrarResumoPeriodo = false;
+  filtroAplicado = false;
   produtos: ProdutoDTO[] = [];
   tamanhos: ProdutoTamanhoDTO[] = [];
+  tamanhosFiltro: ProdutoTamanhoDTO[] = [];
   produtoFiltroId: string = '';
+  produtoTamanhoFiltroId: string = '';
+  dataInicioFiltro: string = '';
+  dataFimFiltro: string = '';
   paginaAtualEstoqueBaixo = 1;
   itensPorPaginaEstoqueBaixo = 10;
   paginaAtualMovimentacoes = 1;
@@ -303,7 +413,13 @@ export class EstoqueComponent implements OnInit {
     this.estoqueService.getMovimentacoes().subscribe({
       next: (list) => {
         this.movimentacoes = list;
-        this.movimentacoesFiltradas = list;
+        this.movimentacoesFiltradas = [];
+        this.resumoMovimentacoes = {
+          saldoInicialPeriodo: 0,
+          saldoAtual: this.calcularSaldoAtualLista(list),
+          totalMovimentacoes: list.length,
+          movimentacoes: list
+        };
         this.atualizarPaginacaoMovimentacoes();
       },
       error: (err) => {
@@ -404,28 +520,77 @@ export class EstoqueComponent implements OnInit {
       default: return 'bg-secondary';
     }
   }
-  
-  aplicarFiltro(): void {
+
+  onProdutoFiltroChange(): void {
+    this.produtoTamanhoFiltroId = '';
+    this.tamanhosFiltro = [];
+    this.filtroAplicado = false;
+    this.mostrarResumoPeriodo = false;
+
     if (!this.produtoFiltroId) {
-      this.movimentacoesFiltradas = this.movimentacoes;
-      this.paginaAtualMovimentacoes = 1;
-      this.atualizarPaginacaoMovimentacoes();
       return;
     }
-    
-    const produtoSelecionado = this.produtos.find(p => p.id === this.produtoFiltroId);
-    if (produtoSelecionado) {
-      this.movimentacoesFiltradas = this.movimentacoes.filter(
-        mov => mov.nomeProduto === produtoSelecionado.nome
-      );
-      this.paginaAtualMovimentacoes = 1;
-      this.atualizarPaginacaoMovimentacoes();
-    }
+
+    this.tamanhoService.getByProdutoId(this.produtoFiltroId).subscribe({
+      next: (list) => {
+        this.tamanhosFiltro = list.filter(t => t.ativo);
+      },
+      error: (err) => {
+        console.error('Erro ao carregar tamanhos do filtro', err);
+        this.tamanhosFiltro = [];
+      }
+    });
   }
-  
+
+  aplicarFiltro(): void {
+    if (!this.produtoFiltroId) {
+      this.alertService.warning('Atenção', 'Selecione um produto para consultar o estoque.');
+      return;
+    }
+
+    if (this.dataInicioFiltro && this.dataFimFiltro && this.dataInicioFiltro > this.dataFimFiltro) {
+      this.alertService.warning('Atenção', 'A data inicial não pode ser maior que a data final.');
+      return;
+    }
+
+    this.estoqueService.consultarMovimentacoes({
+      produtoId: this.produtoFiltroId || undefined,
+      produtoTamanhoId: this.produtoTamanhoFiltroId || undefined,
+      dataInicio: this.dataInicioFiltro || undefined,
+      dataFim: this.dataFimFiltro || undefined
+    }).subscribe({
+      next: (resumo) => {
+        this.resumoMovimentacoes = resumo;
+        this.mostrarResumoPeriodo = true;
+        this.filtroAplicado = true;
+        this.movimentacoesFiltradas = resumo.movimentacoes;
+        this.paginaAtualMovimentacoes = 1;
+        this.atualizarPaginacaoMovimentacoes();
+      },
+      error: (err) => {
+        console.error('Erro ao consultar movimentações', err);
+        this.alertService.error('Erro', 'Não foi possível consultar as movimentações de estoque.');
+      }
+    });
+  }
+
   limparFiltro(): void {
     this.produtoFiltroId = '';
-    this.aplicarFiltro();
+    this.produtoTamanhoFiltroId = '';
+    this.dataInicioFiltro = '';
+    this.dataFimFiltro = '';
+    this.mostrarResumoPeriodo = false;
+    this.filtroAplicado = false;
+    this.tamanhosFiltro = [];
+    this.movimentacoesFiltradas = [];
+    this.resumoMovimentacoes = {
+      saldoInicialPeriodo: 0,
+      saldoAtual: this.calcularSaldoAtualLista(this.movimentacoes),
+      totalMovimentacoes: this.movimentacoes.length,
+      movimentacoes: this.movimentacoes
+    };
+    this.paginaAtualMovimentacoes = 1;
+    this.atualizarPaginacaoMovimentacoes();
   }
 
   onPaginarEstoqueBaixo(event: { pagina: number; itensPorPagina: number }): void {
@@ -451,4 +616,23 @@ export class EstoqueComponent implements OnInit {
     const fim = inicio + this.itensPorPaginaMovimentacoes;
     this.movimentacoesPaginadas = this.movimentacoesFiltradas.slice(inicio, fim);
   }
+
+  onFiltroPeriodoChange(): void {
+    this.mostrarResumoPeriodo = false;
+    this.filtroAplicado = false;
+  }
+
+  private calcularSaldoAtualLista(movimentacoes: MovimentacaoEstoqueDTO[]): number {
+    const mapa = new Map<string, MovimentacaoEstoqueDTO>();
+
+    for (const movimentacao of movimentacoes) {
+      const atual = mapa.get(movimentacao.produtoTamanhoId);
+      if (!atual || new Date(movimentacao.dataMovimentacao) > new Date(atual.dataMovimentacao)) {
+        mapa.set(movimentacao.produtoTamanhoId, movimentacao);
+      }
+    }
+
+    return Array.from(mapa.values()).reduce((total, item) => total + item.estoqueAtual, 0);
+  }
 }
+

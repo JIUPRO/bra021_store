@@ -33,6 +33,10 @@ namespace LojaVirtual.API.Controllers
 				ProdutoId = v.ProdutoId,
 				Tamanho = v.Tamanho,
 				QuantidadeEstoque = v.QuantidadeEstoque,
+				Peso = v.Peso,
+				Altura = v.Altura,
+				Largura = v.Largura,
+				Profundidade = v.Profundidade,
 				Ativo = v.Ativo
 			});
 
@@ -53,6 +57,10 @@ namespace LojaVirtual.API.Controllers
 				ProdutoId = tamanho.ProdutoId,
 				Tamanho = tamanho.Tamanho,
 				QuantidadeEstoque = tamanho.QuantidadeEstoque,
+				Peso = tamanho.Peso,
+				Altura = tamanho.Altura,
+				Largura = tamanho.Largura,
+				Profundidade = tamanho.Profundidade,
 				Ativo = tamanho.Ativo
 			};
 
@@ -70,7 +78,11 @@ namespace LojaVirtual.API.Controllers
 					ProdutoId = request.ProdutoId,
 					Tamanho = request.Tamanho,
 					QuantidadeEstoque = 0,
-					Ativo = true
+					Peso = request.Peso,
+					Altura = request.Altura,
+					Largura = request.Largura,
+					Profundidade = request.Profundidade,
+					Ativo = request.Ativo
 				};
 
 				_contexto.ProdutoTamanhos.Add(tamanho);
@@ -82,6 +94,10 @@ namespace LojaVirtual.API.Controllers
 					ProdutoId = tamanho.ProdutoId,
 					Tamanho = tamanho.Tamanho,
 					QuantidadeEstoque = tamanho.QuantidadeEstoque,
+					Peso = tamanho.Peso,
+					Altura = tamanho.Altura,
+					Largura = tamanho.Largura,
+					Profundidade = tamanho.Profundidade,
 					Ativo = tamanho.Ativo
 				};
 
@@ -104,6 +120,10 @@ namespace LojaVirtual.API.Controllers
 					return NotFound();
 
 				tamanho.Tamanho = request.Tamanho;
+				tamanho.Peso = request.Peso;
+				tamanho.Altura = request.Altura;
+				tamanho.Largura = request.Largura;
+				tamanho.Profundidade = request.Profundidade;
 				tamanho.Ativo = request.Ativo;
 
 				_contexto.ProdutoTamanhos.Update(tamanho);

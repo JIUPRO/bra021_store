@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
 import { CategoriaService, CategoriaDTO } from '../../services/categoria.service';
 import { AlertService } from '../../services/alert.service';
 import { PaginationComponent } from '../../components/pagination/pagination.component';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-categorias',
@@ -101,13 +102,57 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
                   placeholder="1">
               </div>
               <div class="mb-3">
-                <label for="imagemUrl" class="form-label">URL da Imagem</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="imagemUrl" 
-                  formControlName="imagemUrl"
-                  placeholder="https://...">
+                <label class="form-label">Imagem da Categoria</label>
+                <div class="border rounded p-3">
+                  <div class="text-center mb-2">
+                    <ng-container *ngIf="imagemPreviewUrl; else semImagemCategoria">
+                      <img
+                        [src]="imagemPreviewUrl"
+                        class="img-fluid"
+                        style="max-height: 150px;"
+                      >
+                    </ng-container>
+                    <ng-template #semImagemCategoria>
+                      <div class="imagem-placeholder">
+                        <i class="bi bi-image"></i>
+                        <span>Sem imagem</span>
+                      </div>
+                    </ng-template>
+                  </div>
+                  <input
+                    type="file"
+                    class="form-control"
+                    accept="image/jpeg,image/png,image/webp"
+                    (change)="onArquivoSelecionado($event)">
+                  <small class="form-text text-muted d-block mt-2">
+                    <ng-container *ngIf="editando; else dicaNovaCategoria">
+                      Arquivos JPG, PNG ou WEBP. Selecione a imagem e use o botão abaixo para enviar.
+                    </ng-container>
+                    <ng-template #dicaNovaCategoria>
+                      Arquivos JPG, PNG ou WEBP. No cadastro, a imagem será enviada após criar a categoria.
+                    </ng-template>
+                  </small>
+                  <div class="d-flex gap-2 align-items-center mt-3">
+                    <button
+                      *ngIf="editando"
+                      type="button"
+                      class="btn btn-outline-success btn-sm"
+                      (click)="enviarImagemSelecionada()"
+                      [disabled]="!arquivoImagemSelecionado || enviandoImagem">
+                      <span *ngIf="!enviandoImagem"><i class="bi bi-upload me-1"></i>{{ imagemPreviewUrl ? 'Atualizar imagem' : 'Enviar imagem' }}</span>
+                      <span *ngIf="enviandoImagem"><span class="spinner-border spinner-border-sm me-1"></span>Enviando...</span>
+                    </button>
+                    <button
+                      *ngIf="editando && imagemPreviewUrl"
+                      type="button"
+                      class="btn btn-outline-danger btn-sm"
+                      (click)="removerImagem()"
+                      [disabled]="removendoImagem">
+                      <span *ngIf="!removendoImagem"><i class="bi bi-trash me-1"></i>Remover imagem</span>
+                      <span *ngIf="removendoImagem"><span class="spinner-border spinner-border-sm me-1"></span>Removendo...</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="modal-footer">
@@ -153,6 +198,24 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
       opacity: 0.5;
       z-index: 1040;
     }
+
+    .imagem-placeholder {
+      min-height: 150px;
+      border: 1px dashed #c8d8cc;
+      border-radius: 12px;
+      background: #f6fbf7;
+      color: #5f7a66;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .imagem-placeholder i {
+      font-size: 2rem;
+      color: #6ea07b;
+    }
   `]
 })
 export class CategoriasComponent implements OnInit {
@@ -165,17 +228,20 @@ export class CategoriasComponent implements OnInit {
   mostrarFormulario = false;
   editando = false;
   carregando = false;
+  enviandoImagem = false;
+  removendoImagem = false;
   formulario: FormGroup;
   paginaAtual = 1;
   itensPorPagina = 10;
+  arquivoImagemSelecionado: File | null = null;
+  imagemPreviewUrl = '';
 
   constructor() {
     this.formulario = this.fb.group({
       id: [''],
       nome: ['', [Validators.required, Validators.minLength(3)]],
       descricao: [''],
-      ordemExibicao: [0],
-      imagemUrl: ['']
+      ordemExibicao: [0]
     });
   }
 
@@ -199,12 +265,16 @@ export class CategoriasComponent implements OnInit {
   abrirFormulario(): void {
     this.editando = false;
     this.formulario.reset();
+    this.arquivoImagemSelecionado = null;
+    this.imagemPreviewUrl = '';
     this.mostrarFormulario = true;
   }
 
   fecharFormulario(): void {
     this.mostrarFormulario = false;
     this.formulario.reset();
+    this.arquivoImagemSelecionado = null;
+    this.imagemPreviewUrl = '';
   }
 
   onPaginar(event: { pagina: number; itensPorPagina: number }): void {
@@ -230,7 +300,10 @@ export class CategoriasComponent implements OnInit {
       : this.categoriaService.create(dados);
 
     requisicao.subscribe({
-      next: () => {
+      next: async (categoria: CategoriaDTO) => {
+        if (!this.editando) {
+          await this.processarUploadImagemSeNecessario(categoria.id);
+        }
         this.carregarCategorias();
         this.fecharFormulario();
         this.carregando = false;
@@ -249,9 +322,10 @@ export class CategoriasComponent implements OnInit {
       id: categoria.id,
       nome: categoria.nome,
       descricao: categoria.descricao,
-      ordemExibicao: categoria.ordemExibicao,
-      imagemUrl: categoria.imagemUrl
+      ordemExibicao: categoria.ordemExibicao
     });
+    this.arquivoImagemSelecionado = null;
+    this.imagemPreviewUrl = categoria.imagemUrl || '';
     this.mostrarFormulario = true;
   }
 
@@ -267,5 +341,72 @@ export class CategoriasComponent implements OnInit {
         });
       }
     });
+  }
+
+  onArquivoSelecionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.arquivoImagemSelecionado = input.files?.[0] ?? null;
+  }
+
+  enviarImagemSelecionada(): void {
+    const categoriaId = this.formulario.get('id')?.value;
+    if (!this.editando || !categoriaId || !this.arquivoImagemSelecionado) {
+      return;
+    }
+
+    this.enviandoImagem = true;
+    this.categoriaService.uploadImagem(categoriaId, this.arquivoImagemSelecionado).subscribe({
+      next: (categoria) => {
+        this.imagemPreviewUrl = categoria?.imagemUrl || this.imagemPreviewUrl;
+        this.arquivoImagemSelecionado = null;
+        this.enviandoImagem = false;
+        this.carregarCategorias();
+        this.alertService.success('Imagem atualizada', 'A imagem da categoria foi enviada com sucesso.');
+      },
+      error: (err) => {
+        console.error('Erro enviando imagem da categoria', err);
+        this.enviandoImagem = false;
+        this.alertService.error('Erro ao enviar imagem', err.error?.mensagem || err.message);
+      }
+    });
+  }
+
+  removerImagem(): void {
+    const categoriaId = this.formulario.get('id')?.value;
+    if (!this.editando || !categoriaId || !this.imagemPreviewUrl) {
+      return;
+    }
+
+    this.alertService.confirm('Remover imagem', 'Deseja remover a imagem atual desta categoria?').then(confirmado => {
+      if (!confirmado) {
+        return;
+      }
+
+      this.removendoImagem = true;
+      this.categoriaService.removerImagem(categoriaId).subscribe({
+        next: (categoria) => {
+          this.imagemPreviewUrl = categoria?.imagemUrl || '';
+          this.arquivoImagemSelecionado = null;
+          this.removendoImagem = false;
+          this.carregarCategorias();
+          this.alertService.success('Imagem removida', 'A imagem da categoria foi removida com sucesso.');
+        },
+        error: (err) => {
+          console.error('Erro removendo imagem da categoria', err);
+          this.removendoImagem = false;
+          this.alertService.error('Erro ao remover imagem', err.error?.mensagem || err.message);
+        }
+      });
+    });
+  }
+
+  private async processarUploadImagemSeNecessario(categoriaId: string): Promise<void> {
+    if (!this.arquivoImagemSelecionado) {
+      return;
+    }
+
+    const categoria = await firstValueFrom(this.categoriaService.uploadImagem(categoriaId, this.arquivoImagemSelecionado));
+    this.imagemPreviewUrl = categoria?.imagemUrl || this.imagemPreviewUrl;
+    this.arquivoImagemSelecionado = null;
   }
 }

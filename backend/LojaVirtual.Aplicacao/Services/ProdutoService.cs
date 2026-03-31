@@ -15,6 +15,7 @@ namespace LojaVirtual.Aplicacao.Services
 		Task<ProdutoDTO> CriarAsync(CriarProdutoDTO dto);
 		Task<ProdutoDTO?> AtualizarAsync(AtualizarProdutoDTO dto);
 		Task<bool> RemoverAsync(Guid id);
+		Task<ProdutoDTO?> AtualizarImagemAsync(Guid id, string? imagemUrl, string? imagemKey);
 		Task<IEnumerable<ProdutoDTO>> ObterComEstoqueBaixoAsync();
 	}
 
@@ -102,6 +103,24 @@ namespace LojaVirtual.Aplicacao.Services
 			await _unitOfWork.SalvarMudancasAsync();
 
 			return true;
+		}
+
+		public async Task<ProdutoDTO?> AtualizarImagemAsync(Guid id, string? imagemUrl, string? imagemKey)
+		{
+			var produto = await _unitOfWork.Produtos.ObterPorIdAsync(id);
+			if (produto == null)
+			{
+				return null;
+			}
+
+			produto.ImagemUrl = imagemUrl;
+			produto.ImagemKey = imagemKey;
+			produto.DataAtualizacao = DateTime.UtcNow;
+
+			await _unitOfWork.Produtos.AtualizarAsync(produto);
+			await _unitOfWork.SalvarMudancasAsync();
+
+			return produto.Adapt<ProdutoDTO>();
 		}
 
 		public async Task<IEnumerable<ProdutoDTO>> ObterComEstoqueBaixoAsync()

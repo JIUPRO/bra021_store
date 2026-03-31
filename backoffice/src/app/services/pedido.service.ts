@@ -3,12 +3,15 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Pedido, ResumoPedido, StatusPedido } from '../models/pedido.model';
+import { UploadService } from './upload.service';
 
 @Injectable({ providedIn: 'root' })
 export class PedidoService {
   private http = inject(HttpClient);
+  private uploadService = inject(UploadService);
   private baseUrl = `${environment.apiUrl}/pedidos`;
   private pagamentoUrl = `${environment.apiUrl}/pagamentos`;
+  private logisticaUrl = `${environment.apiUrl}/logistica`;
 
   getAll(): Observable<ResumoPedido[]> {
     return this.http.get<ResumoPedido[]>(this.baseUrl);
@@ -16,6 +19,10 @@ export class PedidoService {
 
   getById(id: string): Observable<Pedido> {
     return this.http.get<Pedido>(`${this.baseUrl}/${id}`);
+  }
+
+  getByCliente(clienteId: string): Observable<ResumoPedido[]> {
+    return this.http.get<ResumoPedido[]>(`${this.baseUrl}/cliente/${clienteId}`);
   }
 
   create(dto: Partial<Pedido>) {
@@ -35,6 +42,22 @@ export class PedidoService {
       id,
       notaFiscalUrl
     });
+  }
+
+  uploadNotaFiscal(id: string, file: File) {
+    return this.uploadService.uploadFile(`pedidos/${id}/nota-fiscal/upload`, file);
+  }
+
+  removerNotaFiscal(id: string) {
+    return this.http.delete<Pedido>(`${this.baseUrl}/${id}/nota-fiscal`);
+  }
+
+  gerarEtiqueta(id: string) {
+    return this.http.post<any>(`${this.logisticaUrl}/pedidos/${id}/gerar-etiqueta`, {});
+  }
+
+  sincronizarRastreio(id: string) {
+    return this.http.post<any>(`${this.logisticaUrl}/pedidos/${id}/sincronizar-rastreio`, {});
   }
 
   cancelarPagamento(pedidoId: string): Observable<any> {

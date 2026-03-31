@@ -6,6 +6,7 @@ namespace LojaVirtual.Aplicacao.DTOs
 		public string Chave { get; set; } = string.Empty;
 		public string Valor { get; set; } = string.Empty;
 		public string? Descricao { get; set; }
+		public string? Secao { get; set; }
 		public string Tipo { get; set; } = "String";
 		public DateTime DataCriacao { get; set; }
 		public DateTime DataAtualizacao { get; set; }
@@ -14,6 +15,7 @@ namespace LojaVirtual.Aplicacao.DTOs
 	public class AtualizarParametroSistemaDTO
 	{
 		public string Valor { get; set; } = string.Empty;
+		public string? Secao { get; set; }
 	}
 
 	public class CriarParametroSistemaDTO
@@ -21,5 +23,6 @@ namespace LojaVirtual.Aplicacao.DTOs
 		public string Chave { get; set; } = string.Empty;
 		public string Valor { get; set; } = string.Empty;
 		public string? Descricao { get; set; }
+		public string? Secao { get; set; }
 	}
 }

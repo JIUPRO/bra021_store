@@ -47,6 +47,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/clientes/clientes.component').then(m => m.ClientesComponent)
   },
   {
+    path: 'clientes/:id',
+    canActivate: [AuthGuard],
+    loadComponent: () => import('./pages/clientes/cliente-detalhe.component').then(m => m.ClienteDetalheComponent)
+  },
+  {
     path: 'estoque',
     canActivate: [AuthGuard],
     loadComponent: () => import('./pages/estoque/estoque.component').then(m => m.EstoqueComponent)

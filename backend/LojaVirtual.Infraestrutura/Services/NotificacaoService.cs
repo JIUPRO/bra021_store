@@ -78,11 +78,20 @@ namespace LojaVirtual.Infraestrutura.Services
 
 			corpo.AppendLine("</ul>");
 			corpo.AppendLine("<h3>Endereço de Entrega:</h3>");
+			corpo.AppendLine($"<p><strong>Tipo de Entrega:</strong> {pedido.TipoEntrega ?? "N/A"}</p>");
 			corpo.AppendLine($"<p>{pedido.LogradouroEntrega}, {pedido.NumeroEntrega}</p>");
 			if (!string.IsNullOrEmpty(pedido.ComplementoEntrega))
 				corpo.AppendLine($"<p>{pedido.ComplementoEntrega}</p>");
 			corpo.AppendLine($"<p>{pedido.BairroEntrega} - {pedido.CidadeEntrega}/{pedido.EstadoEntrega}</p>");
 			corpo.AppendLine($"<p>CEP: {pedido.CepEntrega}</p>");
+			corpo.AppendLine("<h3>Frete:</h3>");
+			corpo.AppendLine($"<p><strong>Transportadora:</strong> {pedido.TransportadoraFrete ?? "N/A"}</p>");
+			corpo.AppendLine($"<p><strong>Serviço:</strong> {pedido.ServicoFrete ?? "N/A"}</p>");
+			corpo.AppendLine($"<p><strong>Código do Serviço:</strong> {pedido.CodigoServicoFrete ?? "N/A"}</p>");
+			corpo.AppendLine($"<p><strong>Prazo de Preparação:</strong> {pedido.PrazoPreparacaoDias} dias</p>");
+			corpo.AppendLine($"<p><strong>Prazo da Transportadora:</strong> {pedido.PrazoEnvioDias} dias</p>");
+			corpo.AppendLine($"<p><strong>Prazo Total:</strong> {pedido.PrazoEntregaDias} dias</p>");
+			corpo.AppendLine($"<p><strong>Valor do Frete:</strong> R$ {pedido.ValorFrete:N2}</p>");
 
 			mensagem.Body = new TextPart("html")
 			{
@@ -284,6 +293,11 @@ namespace LojaVirtual.Infraestrutura.Services
 			if (pedido.ValorDesconto > 0)
 				corpo.AppendLine($"<p><strong>Desconto:</strong> -R$ {pedido.ValorDesconto:N2}</p>");
 			corpo.AppendLine($"<p><strong>Frete:</strong> R$ {pedido.ValorFrete:N2}</p>");
+			corpo.AppendLine($"<p><strong>Tipo de Entrega:</strong> {pedido.TipoEntrega ?? "N/A"}</p>");
+			corpo.AppendLine($"<p><strong>Transportadora:</strong> {pedido.TransportadoraFrete ?? "N/A"}</p>");
+			corpo.AppendLine($"<p><strong>Serviço:</strong> {pedido.ServicoFrete ?? "N/A"}</p>");
+			corpo.AppendLine($"<p><strong>Código do Serviço:</strong> {pedido.CodigoServicoFrete ?? "N/A"}</p>");
+			corpo.AppendLine($"<p><strong>Prazo de Entrega:</strong> {pedido.PrazoEntregaDias} dias</p>");
 			corpo.AppendLine($"<p><strong style='font-size: 18px;'>Valor Total: R$ {pedido.ValorTotal:N2}</strong></p>");
 			corpo.AppendLine("<h3>Endereço de Entrega:</h3>");
 			corpo.AppendLine($"<p>{pedido.LogradouroEntrega}, {pedido.NumeroEntrega}</p>");
@@ -344,6 +358,7 @@ namespace LojaVirtual.Infraestrutura.Services
 			}
 
 			var statusExtenso = ObterStatusPorExtenso(pedido.Status);
+			var urlPedidoCliente = ObterUrlPedidoCliente(pedido.Id);
 			var mensagem = new MimeMessage();
 			mensagem.From.Add(new MailboxAddress("Loja Brazil-021 School of Jiu-Jitsu", fromEmail));
 			mensagem.To.Add(new MailboxAddress(pedido.NomeEntrega, clienteEmail));
@@ -357,6 +372,10 @@ namespace LojaVirtual.Infraestrutura.Services
 			corpo.AppendLine("<h3>Detalhes do Pedido:</h3>");
 			corpo.AppendLine($"<p><strong>Valor Total:</strong> R$ {pedido.ValorTotal:N2}</p>");
 			corpo.AppendLine($"<p><strong>Endereço:</strong> {pedido.LogradouroEntrega}, {pedido.NumeroEntrega} - {pedido.BairroEntrega}, {pedido.CidadeEntrega}/{pedido.EstadoEntrega}</p>");
+			corpo.AppendLine("<p>");
+			corpo.AppendLine($"<a href=\"{urlPedidoCliente}\" style=\"display:inline-block;padding:10px 16px;background:#10b981;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;\">Acompanhar Pedido</a>");
+			corpo.AppendLine("</p>");
+			corpo.AppendLine($"<p>Se preferir, acesse diretamente: <a href=\"{urlPedidoCliente}\">{urlPedidoCliente}</a></p>");
 			corpo.AppendLine("<p>Qualquer dúvida, entre em contato conosco!</p>");
 
 			mensagem.Body = new TextPart("html")
@@ -604,6 +623,15 @@ namespace LojaVirtual.Infraestrutura.Services
 				StatusPedido.Cancelado => "Cancelado",
 				_ => "Desconhecido"
 			};
+		}
+
+		private string ObterUrlPedidoCliente(Guid pedidoId)
+		{
+			var baseUrl = _configuracao["Frontend:BaseUrl"]
+				?? _configuracao["Loja:BaseUrl"]
+				?? "http://localhost:54317";
+
+			return $"{baseUrl.TrimEnd('/')}/pedido-detalhe/{pedidoId}";
 		}
 	}
 }

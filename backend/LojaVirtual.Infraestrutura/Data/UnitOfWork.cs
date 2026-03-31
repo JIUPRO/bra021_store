@@ -19,6 +19,7 @@ namespace LojaVirtual.Infraestrutura.Data
 		public IParametroSistemaRepository ParametrosSistema { get; }
 		public IUsuarioRepository Usuarios { get; }
 		public IClienteTrocaSenhaRepository ClientesTrocaSenha { get; }
+		public IUsuarioTrocaSenhaRepository UsuariosTrocaSenha { get; }
 
 		public UnitOfWork(LojaDbContext contexto)
 		{
@@ -33,6 +34,7 @@ namespace LojaVirtual.Infraestrutura.Data
 			ParametrosSistema = new ParametroSistemaRepository(contexto);
 			Usuarios = new UsuarioRepository(contexto);
 			ClientesTrocaSenha = new ClienteTrocaSenhaRepository(contexto);
+			UsuariosTrocaSenha = new UsuarioTrocaSenhaRepository(contexto);
 		}
 
 		public async Task<int> SalvarMudancasAsync()

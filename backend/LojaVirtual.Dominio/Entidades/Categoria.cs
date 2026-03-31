@@ -5,6 +5,7 @@ namespace LojaVirtual.Dominio.Entidades
         public string Nome { get; set; } = string.Empty;
         public string? Descricao { get; set; }
         public string? ImagemUrl { get; set; }
+        public string? ImagemKey { get; set; }
         public int OrdemExibicao { get; set; }
         
         // Relacionamentos

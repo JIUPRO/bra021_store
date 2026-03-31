@@ -6,6 +6,7 @@ namespace LojaVirtual.Aplicacao.DTOs
         public string Nome { get; set; } = string.Empty;
         public string? Descricao { get; set; }
         public string? ImagemUrl { get; set; }
+        public string? ImagemKey { get; set; }
         public int OrdemExibicao { get; set; }
         public int QuantidadeProdutos { get; set; }
     }
@@ -15,6 +16,7 @@ namespace LojaVirtual.Aplicacao.DTOs
         public string Nome { get; set; } = string.Empty;
         public string? Descricao { get; set; }
         public string? ImagemUrl { get; set; }
+        public string? ImagemKey { get; set; }
         public int OrdemExibicao { get; set; }
     }
 
@@ -24,6 +26,7 @@ namespace LojaVirtual.Aplicacao.DTOs
         public string Nome { get; set; } = string.Empty;
         public string? Descricao { get; set; }
         public string? ImagemUrl { get; set; }
+        public string? ImagemKey { get; set; }
         public int OrdemExibicao { get; set; }
     }
 }

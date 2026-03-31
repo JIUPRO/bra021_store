@@ -28,15 +28,27 @@ import { environment } from '../../../environments/environment';
           </a>
         </li>
         <li>
-          <a routerLink="/produtos" routerLinkActive="active">
-            <i class="bi bi-box-seam"></i>
-            <span>Produtos</span>
+          <a routerLink="/parametros" routerLinkActive="active">
+            <i class="bi bi-gear-fill"></i>
+            <span>Parâmetros</span>
           </a>
         </li>
         <li>
           <a routerLink="/categorias" routerLinkActive="active">
             <i class="bi bi-tags"></i>
             <span>Categorias</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="/produtos" routerLinkActive="active">
+            <i class="bi bi-box-seam"></i>
+            <span>Produtos</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="/estoque" routerLinkActive="active">
+            <i class="bi bi-boxes"></i>
+            <span>Estoque</span>
           </a>
         </li>
         <li>
@@ -52,21 +64,9 @@ import { environment } from '../../../environments/environment';
           </a>
         </li>
         <li>
-          <a routerLink="/estoque" routerLinkActive="active">
-            <i class="bi bi-boxes"></i>
-            <span>Estoque</span>
-          </a>
-        </li>
-        <li>
           <a routerLink="/escolas" routerLinkActive="active">
             <i class="bi bi-building"></i>
             <span>Escolas</span>
-          </a>
-        </li>
-        <li>
-          <a routerLink="/parametros" routerLinkActive="active">
-            <i class="bi bi-gear-fill"></i>
-            <span>Parâmetros</span>
           </a>
         </li>
         <li>

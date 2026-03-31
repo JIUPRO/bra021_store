@@ -20,6 +20,7 @@ namespace LojaVirtual.Infraestrutura.Data
 		public DbSet<ParametroSistema> ParametrosSistema { get; set; }
 		public DbSet<Usuario> Usuarios { get; set; }
 		public DbSet<ClienteTrocaSenha> ClientesTrocaSenha { get; set; }
+		public DbSet<UsuarioTrocaSenha> UsuariosTrocaSenha { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
@@ -33,6 +34,7 @@ namespace LojaVirtual.Infraestrutura.Data
 				entity.Property(e => e.Nome).IsRequired().HasMaxLength(100);
 				entity.Property(e => e.Descricao).HasMaxLength(500);
 				entity.Property(e => e.ImagemUrl).HasMaxLength(500);
+				entity.Property(e => e.ImagemKey).HasMaxLength(500);
 				entity.HasIndex(e => e.OrdemExibicao);
 			});
 
@@ -49,6 +51,7 @@ namespace LojaVirtual.Infraestrutura.Data
 				entity.Property(e => e.ValorFrete).HasPrecision(18, 2);
 				entity.Property(e => e.PrazoEntregaDias);
 				entity.Property(e => e.ImagemUrl).HasMaxLength(500);
+				entity.Property(e => e.ImagemKey).HasMaxLength(500);
 
 				entity.HasIndex(e => e.Nome);
 				entity.HasIndex(e => e.Destaque);
@@ -109,10 +112,23 @@ namespace LojaVirtual.Infraestrutura.Data
 				entity.Property(e => e.ValorFrete).HasPrecision(18, 2);
 				entity.Property(e => e.ValorDesconto).HasPrecision(18, 2);
 				entity.Property(e => e.ValorTotal).HasPrecision(18, 2);
+				entity.Property(e => e.PrazoPreparacaoDias);
+				entity.Property(e => e.PrazoEnvioDias);
 				entity.Property(e => e.PrazoEntregaDias);
 				entity.Property(e => e.Observacoes).HasMaxLength(1000);
 				entity.Property(e => e.MetodoPagamento).HasMaxLength(20);
 				entity.Property(e => e.NotaFiscalUrl).HasMaxLength(500);
+				entity.Property(e => e.NotaFiscalKey).HasMaxLength(500);
+				entity.Property(e => e.TipoEntrega).HasMaxLength(20);
+				entity.Property(e => e.TransportadoraFrete).HasMaxLength(100);
+				entity.Property(e => e.ServicoFrete).HasMaxLength(100);
+				entity.Property(e => e.CodigoServicoFrete).HasMaxLength(50);
+				entity.Property(e => e.MelhorEnvioPedidoId).HasMaxLength(100);
+				entity.Property(e => e.MelhorEnvioProtocolo).HasMaxLength(100);
+				entity.Property(e => e.CodigoRastreio).HasMaxLength(100);
+				entity.Property(e => e.UrlRastreio).HasMaxLength(500);
+				entity.Property(e => e.UrlEtiqueta).HasMaxLength(500);
+				entity.Property(e => e.StatusLogistico).HasMaxLength(50);
 				entity.HasIndex(e => e.NumeroPedido).IsUnique();
 				entity.HasIndex(e => e.Status);
 				entity.HasIndex(e => e.DataPedido);
@@ -204,6 +220,7 @@ namespace LojaVirtual.Infraestrutura.Data
 				entity.Property(e => e.Chave).IsRequired().HasMaxLength(100);
 				entity.Property(e => e.Valor).IsRequired().HasMaxLength(500);
 				entity.Property(e => e.Descricao).HasMaxLength(500);
+				entity.Property(e => e.Secao).HasMaxLength(100);
 				entity.Property(e => e.Tipo).HasMaxLength(50);
 				entity.HasIndex(e => e.Chave).IsUnique();
 			});
@@ -236,6 +253,26 @@ namespace LojaVirtual.Infraestrutura.Data
 				entity.HasOne(e => e.Cliente)
 					.WithMany()
 					.HasForeignKey(e => e.ClienteId)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				entity.HasIndex(e => e.Codigo).IsUnique();
+				entity.HasIndex(e => new { e.Email, e.DataExpiracao });
+			});
+
+			modelBuilder.Entity<UsuarioTrocaSenha>(entity =>
+			{
+				entity.ToTable("UsuariosTrocaSenha");
+				entity.HasKey(e => e.Id);
+				entity.Property(e => e.UsuarioId).IsRequired();
+				entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+				entity.Property(e => e.Codigo).IsRequired().HasMaxLength(6);
+				entity.Property(e => e.DataCriacao).IsRequired();
+				entity.Property(e => e.DataExpiracao).IsRequired();
+				entity.Property(e => e.Utilizado).IsRequired();
+
+				entity.HasOne(e => e.Usuario)
+					.WithMany()
+					.HasForeignKey(e => e.UsuarioId)
 					.OnDelete(DeleteBehavior.Cascade);
 
 				entity.HasIndex(e => e.Codigo).IsUnique();

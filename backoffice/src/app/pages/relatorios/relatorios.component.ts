@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { AlertService } from '../../services/alert.service';
+import { DocumentoService } from '../../services/documento.service';
 import { RelatorioService } from '../../services/relatorio.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -244,6 +245,7 @@ import { FormsModule } from '@angular/forms';
 })
 export class RelatoriosComponent {
   private alertService = inject(AlertService);
+  private documentoService = inject(DocumentoService);
   private relatorioService = inject(RelatorioService);
   
   filtros = {
@@ -302,8 +304,7 @@ export class RelatoriosComponent {
     this.relatorioService.gerarRelatorioPedidos(dataInicio, dataFim, this.statusPedidos || undefined).subscribe({
       next: (blob: Blob) => {
         const nomeArquivo = `relatorio_pedidos_${this.formatarDataNome(dataInicio)}_${this.formatarDataNome(dataFim)}.pdf`;
-        this.relatorioService.downloadPDF(blob, nomeArquivo);
-        this.alertService.success('Sucesso', 'Relatório gerado com sucesso');
+        this.documentoService.exibirDocumento(blob, nomeArquivo, 'Relatório de Pedidos');
         this.fecharModalPedidos();
         this.carregandoPedidos = false;
       },
@@ -415,8 +416,7 @@ export class RelatoriosComponent {
     observable.subscribe({
       next: (blob: Blob) => {
         const nomeArquivo = `${nomeBase}_${this.formatarDataNome(dataInicio)}_${this.formatarDataNome(dataFim)}.pdf`;
-        this.relatorioService.downloadPDF(blob, nomeArquivo);
-        this.alertService.success('Sucesso', 'Relatório gerado com sucesso');
+        this.documentoService.exibirDocumento(blob, nomeArquivo, this.obterTituloRelatorioGenerico());
         this.fecharModalRelatorio();
         this.carregandoRelatorio = false;
       },
@@ -459,8 +459,7 @@ export class RelatoriosComponent {
     this.relatorioService.gerarRelatorioComissao(dataInicio, dataFim).subscribe({
       next: (blob: Blob) => {
         const nomeArquivo = `relatorio_comissao_${this.formatarDataNome(dataInicio)}_${this.formatarDataNome(dataFim)}.pdf`;
-        this.relatorioService.downloadPDF(blob, nomeArquivo);
-        this.alertService.success('Sucesso', 'Relatório gerado com sucesso');
+        this.documentoService.exibirDocumento(blob, nomeArquivo, 'Relatório de Comissão');
         this.fecharModalComissao();
         this.carregandoComissao = false;
       },
@@ -474,5 +473,20 @@ export class RelatoriosComponent {
 
   aplicarFiltros(): void {
     this.alertService.success('Filtros', 'Filtros aplicados!');
+  }
+
+  private obterTituloRelatorioGenerico(): string {
+    switch (this.tipoRelatorioAtual) {
+      case 'produtos-vendidos':
+        return 'Relatório de Produtos Mais Vendidos';
+      case 'clientes':
+        return 'Relatório de Clientes';
+      case 'estoque':
+        return 'Relatório de Estoque';
+      case 'produtos-sem-saida':
+        return 'Relatório de Produtos Sem Saída';
+      default:
+        return 'Relatório';
+    }
   }
 }

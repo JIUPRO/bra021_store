@@ -3,6 +3,7 @@ export interface ParametroSistema {
   chave: string;
   valor: string;
   descricao?: string;
+  secao?: string;
   tipo: string;
   dataCriacao: Date;
   dataAtualizacao: Date;
@@ -10,10 +11,12 @@ export interface ParametroSistema {
 
 export interface AtualizarParametro {
   valor: string;
+  secao?: string;
 }
 
 export interface CriarParametro {
   chave: string;
   valor: string;
   descricao?: string;
+  secao?: string;
 }

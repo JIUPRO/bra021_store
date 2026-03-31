@@ -30,30 +30,30 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
 
         <div class="row g-4">
           <div class="col-lg-8">
-            <!-- Status do Pedido -->
+            <!-- Resumo -->
             <div class="card card-dashboard mb-4">
               <div class="card-header bg-white">
                 <h5 class="mb-0">
-                  <i class="bi bi-info-circle me-2"></i>Status do Pedido
+                  <i class="bi bi-receipt me-2"></i>Resumo
                 </h5>
               </div>
               <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <span class="badge fs-6" [class]="getStatusColor(pedido.status)">
-                    {{ pedido.statusDescricao }}
-                  </span>
-                  <small class="text-muted">{{ pedido.dataPedido | date:'dd/MM/yyyy HH:mm' }}</small>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Subtotal</span>
+                  <span>R$ {{ pedido.valorSubtotal | number:'1.2-2' }}</span>
                 </div>
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                  <select class="form-select form-select-sm status-select" [(ngModel)]="statusSelecionado">
-                    <option *ngFor="let s of getStatusOptionsDisponiveis()" [ngValue]="s.valor">{{ s.texto }}</option>
-                  </select>
-                  <button
-                    type="button"
-                    class="btn btn-green btn-sm"
-                    (click)="salvarStatus()">
-                    <i class="bi bi-check2-circle me-1"></i>Atualizar Status
-                  </button>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Frete</span>
+                  <span>R$ {{ pedido.valorFrete | number:'1.2-2' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                  <span>Desconto</span>
+                  <span class="text-success">- R$ {{ pedido.valorDesconto | number:'1.2-2' }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                  <span class="fw-bold">Total</span>
+                  <span class="fw-bold fs-5 text-primary">R$ {{ pedido.valorTotal | number:'1.2-2' }}</span>
                 </div>
               </div>
             </div>
@@ -126,6 +126,77 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
               </div>
             </div>
 
+            <!-- Nota Fiscal -->
+            <div class="card card-dashboard mb-4">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">
+                  <i class="bi bi-file-earmark-pdf me-2"></i>Nota Fiscal
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label">Upload da Nota Fiscal (PDF)</label>
+                  <div class="mb-3" *ngIf="pedido.notaFiscalUrl">
+                    <div class="alert alert-success mb-0">
+                      <i class="bi bi-check-circle me-2"></i>
+                      <strong>Nota Fiscal Registrada:</strong><br>
+                      <a [href]="pedido.notaFiscalUrl" target="_blank" class="text-decoration-none">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Visualizar PDF
+                      </a>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    class="form-control"
+                    accept="application/pdf"
+                    (change)="onNotaFiscalSelecionada($event)"
+                    [disabled]="salvandoNotaFiscal || removendoNotaFiscal">
+                  <small class="text-muted d-block mt-2">
+                    Envie a nota fiscal em PDF. O cliente será notificado após o registro.
+                  </small>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-green btn-sm"
+                    (click)="uploadNotaFiscal()"
+                    [disabled]="salvandoNotaFiscal || !arquivoNotaFiscalSelecionado">
+                    <i *ngIf="!salvandoNotaFiscal" class="bi bi-upload me-1"></i>
+                    <span *ngIf="!salvandoNotaFiscal">{{ pedido.notaFiscalUrl ? 'Trocar PDF' : 'Enviar PDF' }}</span>
+                    <span *ngIf="salvandoNotaFiscal">
+                      <span class="spinner-border spinner-border-sm me-1"></span>Enviando...
+                    </span>
+                  </button>
+                  <button
+                    *ngIf="pedido.notaFiscalUrl"
+                    type="button"
+                    class="btn btn-outline-danger btn-sm"
+                    (click)="removerNotaFiscal()"
+                    [disabled]="removendoNotaFiscal || salvandoNotaFiscal">
+                    <i *ngIf="!removendoNotaFiscal" class="bi bi-trash me-1"></i>
+                    <span *ngIf="!removendoNotaFiscal">Remover nota</span>
+                    <span *ngIf="removendoNotaFiscal">
+                      <span class="spinner-border spinner-border-sm me-1"></span>Removendo...
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dados do Cliente -->
+            <div class="card card-dashboard mb-4">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">
+                  <i class="bi bi-person me-2"></i>Dados do Cliente
+                </h5>
+              </div>
+              <div class="card-body">
+                <p class="mb-1"><strong>{{ pedido.nomeCliente }}</strong></p>
+                <p class="mb-1 text-muted">{{ pedido.emailCliente }}</p>
+                <p class="mb-0 text-muted">{{ pedido.telefoneCliente }}</p>
+              </div>
+            </div>
+
             <!-- Observações -->
             <div *ngIf="pedido.observacoes" class="card card-dashboard">
               <div class="card-header bg-white">
@@ -140,34 +211,118 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
           </div>
 
           <div class="col-lg-4">
-            <!-- Resumo -->
+            <!-- Status do Pedido -->
             <div class="card card-dashboard mb-4">
               <div class="card-header bg-white">
                 <h5 class="mb-0">
-                  <i class="bi bi-receipt me-2"></i>Resumo
+                  <i class="bi bi-info-circle me-2"></i>Status do Pedido
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="badge fs-6" [class]="getStatusColor(pedido.status)">
+                    {{ pedido.statusDescricao }}
+                  </span>
+                  <small class="text-muted">{{ pedido.dataPedido | date:'dd/MM/yyyy HH:mm' }}</small>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                  <select class="form-select form-select-sm status-select" [(ngModel)]="statusSelecionado">
+                    <option *ngFor="let s of getStatusOptionsDisponiveis()" [ngValue]="s.valor">{{ s.texto }}</option>
+                  </select>
+                  <button
+                    type="button"
+                    class="btn btn-green btn-sm"
+                    (click)="salvarStatus()">
+                    <i class="bi bi-check2-circle me-1"></i>Atualizar Status
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Frete e Logística -->
+            <div class="card card-dashboard mb-4">
+              <div class="card-header bg-white">
+                <h5 class="mb-0">
+                  <i class="bi bi-truck me-2"></i>Frete e Logística
                 </h5>
               </div>
               <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
-                  <span>Subtotal</span>
-                  <span>R$ {{ pedido.valorSubtotal | number:'1.2-2' }}</span>
+                  <span>Tipo de entrega</span>
+                  <span class="text-muted">{{ pedido.tipoEntrega || 'N/A' }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                  <span>Frete</span>
-                  <span>R$ {{ pedido.valorFrete | number:'1.2-2' }}</span>
+                  <span>Status logístico</span>
+                  <span class="text-muted">{{ pedido.statusLogistico || 'N/A' }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                  <span>Prazo de entrega</span>
+                  <span>Transportadora</span>
+                  <span class="text-muted">{{ pedido.transportadoraFrete || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Serviço</span>
+                  <span class="text-muted">{{ pedido.servicoFrete || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Código do serviço</span>
+                  <span class="text-muted">{{ pedido.codigoServicoFrete || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Pedido Melhor Envio</span>
+                  <span class="text-muted">{{ pedido.melhorEnvioPedidoId || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Protocolo</span>
+                  <span class="text-muted">{{ pedido.melhorEnvioProtocolo || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Código de rastreio</span>
+                  <span class="text-muted">{{ pedido.codigoRastreio || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Etiqueta</span>
+                  <span class="text-muted">
+                    <a *ngIf="pedido.urlEtiqueta" [href]="pedido.urlEtiqueta" target="_blank" rel="noopener">Abrir</a>
+                    <span *ngIf="!pedido.urlEtiqueta">N/A</span>
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Rastreio</span>
+                  <span class="text-muted">
+                    <a *ngIf="pedido.urlRastreio" [href]="pedido.urlRastreio" target="_blank" rel="noopener">Abrir</a>
+                    <span *ngIf="!pedido.urlRastreio">N/A</span>
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Prazo de preparação</span>
+                  <span class="text-muted">{{ pedido.prazoPreparacaoDias }} dias</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Prazo da transportadora</span>
+                  <span class="text-muted">{{ pedido.prazoEnvioDias }} dias</span>
+                </div>
+                <div class="d-flex justify-content-between mb-0">
+                  <span>Prazo total</span>
                   <span class="text-muted">{{ pedido.prazoEntregaDias }} dias</span>
                 </div>
-                <div class="d-flex justify-content-between mb-3">
-                  <span>Desconto</span>
-                  <span class="text-success">- R$ {{ pedido.valorDesconto | number:'1.2-2' }}</span>
-                </div>
                 <hr>
-                <div class="d-flex justify-content-between">
-                  <span class="fw-bold">Total</span>
-                  <span class="fw-bold fs-5 text-primary">R$ {{ pedido.valorTotal | number:'1.2-2' }}</span>
+                <div class="d-grid gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-green btn-sm"
+                    (click)="executarAcaoEtiqueta()"
+                    [disabled]="processandoEtiqueta || !podeExecutarAcaoEtiqueta()">
+                    <span *ngIf="!processandoEtiqueta"><i class="bi" [ngClass]="getIconeAcaoEtiqueta()"></i>{{ getTextoAcaoEtiqueta() }}</span>
+                    <span *ngIf="processandoEtiqueta"><span class="spinner-border spinner-border-sm me-1"></span>{{ getTextoProcessandoEtiqueta() }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm"
+                    (click)="sincronizarRastreio()"
+                    [disabled]="sincronizandoRastreio || !pedido.melhorEnvioPedidoId">
+                    <span *ngIf="!sincronizandoRastreio"><i class="bi bi-arrow-repeat me-1"></i>Sincronizar Rastreio</span>
+                    <span *ngIf="sincronizandoRastreio"><span class="spinner-border spinner-border-sm me-1"></span>Sincronizando...</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -198,63 +353,6 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
                     </p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Nota Fiscal -->
-            <div class="card card-dashboard mb-4">
-              <div class="card-header bg-white">
-                <h5 class="mb-0">
-                  <i class="bi bi-file-earmark-pdf me-2"></i>Nota Fiscal
-                </h5>
-              </div>
-              <div class="card-body">
-                <div class="mb-3">
-                  <label for="notaFiscalUrl" class="form-label">URL da Nota Fiscal</label>
-                  <input 
-                    type="url" 
-                    class="form-control"
-                    id="notaFiscalUrl"
-                    [(ngModel)]="notaFiscalUrlInput"
-                    placeholder="https://..."
-                    [disabled]="salvandoNotaFiscal">
-                  <small class="text-muted d-block mt-2">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Insira a URL da nota fiscal gerada pelo sistema de faturamento
-                  </small>
-                </div>
-                <div *ngIf="pedido.notaFiscalUrl" class="alert alert-success mb-3">
-                  <i class="bi bi-check-circle me-2"></i>
-                  <strong>Nota Fiscal Registrada:</strong><br>
-                  <a [href]="pedido.notaFiscalUrl" target="_blank" class="text-decoration-none">
-                    <i class="bi bi-file-earmark-pdf me-1"></i>Visualizar
-                  </a>
-                </div>
-                <button 
-                  type="button"
-                  class="btn btn-green btn-sm"
-                  (click)="salvarNotaFiscal()"
-                  [disabled]="salvandoNotaFiscal || !notaFiscalUrlInput.trim()">
-                  <i *ngIf="!salvandoNotaFiscal" class="bi bi-check2-circle me-1"></i>
-                  <span *ngIf="!salvandoNotaFiscal">Registrar Nota Fiscal</span>
-                  <span *ngIf="salvandoNotaFiscal">
-                    <span class="spinner-border spinner-border-sm me-1"></span>Salvando...
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Dados do Cliente -->
-            <div class="card card-dashboard mb-4">
-              <div class="card-header bg-white">
-                <h5 class="mb-0">
-                  <i class="bi bi-person me-2"></i>Dados do Cliente
-                </h5>
-              </div>
-              <div class="card-body">
-                <p class="mb-1"><strong>{{ pedido.nomeCliente }}</strong></p>
-                <p class="mb-1 text-muted">{{ pedido.emailCliente }}</p>
-                <p class="mb-0 text-muted">{{ pedido.telefoneCliente }}</p>
               </div>
             </div>
           </div>
@@ -328,8 +426,11 @@ export class PedidoDetalheComponent implements OnInit {
   statusSelecionado: StatusPedido | null = null;
   paginaAtualItens = 1;
   itensPorPaginaItens = 10;
-  notaFiscalUrlInput = '';
+  arquivoNotaFiscalSelecionado: File | null = null;
   salvandoNotaFiscal = false;
+  removendoNotaFiscal = false;
+  processandoEtiqueta = false;
+  sincronizandoRastreio = false;
   statusOptions = [
     { valor: StatusPedido.Pendente, texto: 'Pendente' },
     { valor: StatusPedido.AguardandoPagamento, texto: 'Aguardando Pagamento' },
@@ -355,7 +456,6 @@ export class PedidoDetalheComponent implements OnInit {
       next: (pedido: any) => {
         this.pedido = pedido;
         this.statusSelecionado = pedido.status;
-        this.notaFiscalUrlInput = pedido.notaFiscalUrl || '';
         this.atualizarPaginacaoItens();
         this.carregando = false;
       },
@@ -400,23 +500,133 @@ export class PedidoDetalheComponent implements OnInit {
     });
   }
 
-  salvarNotaFiscal(): void {
-    if (!this.pedidoId || !this.notaFiscalUrlInput.trim()) {
-      this.alertService.warning('Aviso', 'Insira uma URL válida');
+  onNotaFiscalSelecionada(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.arquivoNotaFiscalSelecionado = input.files?.[0] ?? null;
+  }
+
+  uploadNotaFiscal(): void {
+    if (!this.pedidoId || !this.arquivoNotaFiscalSelecionado) {
+      this.alertService.warning('Aviso', 'Selecione um PDF válido');
       return;
     }
 
     this.salvandoNotaFiscal = true;
-    this.pedidoService.atualizarNotaFiscal(this.pedidoId, this.notaFiscalUrlInput).subscribe({
+    this.pedidoService.uploadNotaFiscal(this.pedidoId, this.arquivoNotaFiscalSelecionado).subscribe({
       next: () => {
-        this.alertService.success('Sucesso', 'Nota fiscal registrada com sucesso! Email enviado ao cliente.');
+        this.arquivoNotaFiscalSelecionado = null;
+        this.alertService.success('Sucesso', 'Nota fiscal enviada com sucesso! Email enviado ao cliente.');
         this.salvandoNotaFiscal = false;
         this.carregarPedido();
       },
       error: (err) => {
-        console.error('Erro ao salvar nota fiscal', err);
-        this.alertService.error('Erro', 'Não foi possível registrar a nota fiscal');
+        console.error('Erro ao enviar nota fiscal', err);
+        this.alertService.error('Erro', err.error?.mensagem || 'Não foi possível enviar a nota fiscal');
         this.salvandoNotaFiscal = false;
+      }
+    });
+  }
+
+  removerNotaFiscal(): void {
+    if (!this.pedidoId || !this.pedido || !this.pedido.notaFiscalUrl) {
+      return;
+    }
+
+    this.alertService.confirm('Remover nota fiscal', 'Deseja remover a nota fiscal registrada deste pedido?').then(confirmado => {
+      if (!confirmado) {
+        return;
+      }
+
+      this.removendoNotaFiscal = true;
+      this.pedidoService.removerNotaFiscal(this.pedidoId!).subscribe({
+        next: () => {
+          this.arquivoNotaFiscalSelecionado = null;
+          this.alertService.success('Sucesso', 'Nota fiscal removida com sucesso.');
+          this.removendoNotaFiscal = false;
+          this.carregarPedido();
+        },
+        error: (err) => {
+          console.error('Erro ao remover nota fiscal', err);
+          this.alertService.error('Erro', err.error?.mensagem || 'Não foi possível remover a nota fiscal');
+          this.removendoNotaFiscal = false;
+        }
+      });
+    });
+  }
+
+  podeGerarEtiqueta(): boolean {
+    return !!this.pedido &&
+      this.pedido.metodoPagamento !== undefined &&
+      this.pedido.status >= StatusPedido.Pago &&
+      !!this.pedido.codigoServicoFrete;
+  }
+
+  podeExecutarAcaoEtiqueta(): boolean {
+    return !!this.pedido?.urlEtiqueta || this.podeGerarEtiqueta();
+  }
+
+  temEtiquetaGerada(): boolean {
+    return !!this.pedido?.urlEtiqueta || !!this.pedido?.dataEtiquetaGerada;
+  }
+
+  getTextoAcaoEtiqueta(): string {
+    return this.temEtiquetaGerada() ? ' Imprimir Etiqueta' : ' Gerar Etiqueta';
+  }
+
+  getTextoProcessandoEtiqueta(): string {
+    return this.temEtiquetaGerada() ? 'Abrindo...' : 'Gerando...';
+  }
+
+  getIconeAcaoEtiqueta(): string {
+    return this.temEtiquetaGerada() ? 'bi-printer me-1' : 'bi-tag me-1';
+  }
+
+  executarAcaoEtiqueta(): void {
+    if (this.temEtiquetaGerada() && this.pedido?.urlEtiqueta) {
+      window.open(this.pedido.urlEtiqueta, '_blank', 'noopener');
+      return;
+    }
+
+    this.gerarEtiqueta();
+  }
+
+  gerarEtiqueta(): void {
+    if (!this.pedidoId) {
+      return;
+    }
+
+    this.processandoEtiqueta = true;
+    this.pedidoService.gerarEtiqueta(this.pedidoId).subscribe({
+      next: (response) => {
+        const mensagem = response?.mensagem || 'Etiqueta gerada com sucesso.';
+        this.alertService.success('Sucesso', mensagem);
+        this.processandoEtiqueta = false;
+        this.carregarPedido();
+      },
+      error: (err) => {
+        console.error('Erro ao gerar etiqueta', err);
+        this.alertService.error('Erro', err?.error?.mensagem || 'Não foi possível gerar a etiqueta');
+        this.processandoEtiqueta = false;
+      }
+    });
+  }
+
+  sincronizarRastreio(): void {
+    if (!this.pedidoId) {
+      return;
+    }
+
+    this.sincronizandoRastreio = true;
+    this.pedidoService.sincronizarRastreio(this.pedidoId).subscribe({
+      next: () => {
+        this.alertService.success('Sucesso', 'Rastreio sincronizado com sucesso.');
+        this.sincronizandoRastreio = false;
+        this.carregarPedido();
+      },
+      error: (err) => {
+        console.error('Erro ao sincronizar rastreio', err);
+        this.alertService.error('Erro', err?.error?.mensagem || 'Não foi possível sincronizar o rastreio');
+        this.sincronizandoRastreio = false;
       }
     });
   }

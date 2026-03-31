@@ -12,6 +12,7 @@ namespace LojaVirtual.Dominio.Interfaces
 		IParametroSistemaRepository ParametrosSistema { get; }
 		IUsuarioRepository Usuarios { get; }
 		IClienteTrocaSenhaRepository ClientesTrocaSenha { get; }
+		IUsuarioTrocaSenhaRepository UsuariosTrocaSenha { get; }
 
 		Task<int> SalvarMudancasAsync();
 		Task BeginTransactionAsync();

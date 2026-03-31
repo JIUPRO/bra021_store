@@ -57,4 +57,24 @@ namespace LojaVirtual.Aplicacao.DTOs
 		public int NovaQuantidade { get; set; }
 		public string? Motivo { get; set; }
 	}
+
+	public class ConsultaMovimentacaoEstoqueDTO
+	{
+		public Guid? ProdutoId { get; set; }
+		public Guid? ProdutoTamanhoId { get; set; }
+		public DateTime? DataInicio { get; set; }
+		public DateTime? DataFim { get; set; }
+	}
+
+	public class ResumoMovimentacaoEstoqueDTO
+	{
+		public Guid? ProdutoId { get; set; }
+		public Guid? ProdutoTamanhoId { get; set; }
+		public DateTime? DataInicio { get; set; }
+		public DateTime? DataFim { get; set; }
+		public int SaldoInicialPeriodo { get; set; }
+		public int SaldoAtual { get; set; }
+		public int TotalMovimentacoes { get; set; }
+		public List<MovimentacaoEstoqueDTO> Movimentacoes { get; set; } = new();
+	}
 }

@@ -3,6 +3,7 @@ using LojaVirtual.Dominio.Entidades;
 using LojaVirtual.Dominio.Enums;
 using LojaVirtual.Dominio.Interfaces;
 using Mapster;
+using Microsoft.Extensions.Logging;
 
 namespace LojaVirtual.Aplicacao.Services
 {
@@ -22,11 +23,15 @@ namespace LojaVirtual.Aplicacao.Services
 	{
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly INotificacaoService _NotificacaoService;
+		private readonly IFreteService _freteService;
+		private readonly ILogger<PedidoService> _logger;
 
-		public PedidoService(IUnitOfWork unitOfWork, INotificacaoService notificacaoService)
+		public PedidoService(IUnitOfWork unitOfWork, INotificacaoService notificacaoService, IFreteService freteService, ILogger<PedidoService> logger)
 		{
 			_unitOfWork = unitOfWork;
 			_NotificacaoService = notificacaoService;
+			_freteService = freteService;
+			_logger = logger;
 		}
 
 		public async Task<IEnumerable<ResumoPedidoDTO>> ObterTodosAsync()
@@ -71,6 +76,26 @@ namespace LojaVirtual.Aplicacao.Services
 					throw new Exception("Cliente não encontrado");
 				}
 
+				LojaVirtual.Dominio.Entidades.Escola? escola = null;
+				if (dto.EscolaId.HasValue)
+				{
+					escola = await _unitOfWork.Escolas.ObterPorIdAsync(dto.EscolaId.Value);
+				}
+
+				var cotacaoFrete = await _freteService.CotarAsync(new CotacaoFreteRequestDTO
+				{
+					CepDestino = dto.CepEntrega,
+					CodigoServico = string.Equals(dto.ProviderFrete, "MelhorEnvio", StringComparison.OrdinalIgnoreCase)
+						? dto.CodigoServicoFrete
+						: null,
+					Itens = dto.Itens.Select(item => new CotacaoFreteItemDTO
+					{
+						ProdutoId = item.ProdutoId,
+						Quantidade = item.Quantidade
+					}).ToList()
+				});
+				var opcaoFrete = ObterOpcaoFreteFinal(dto, cotacaoFrete);
+
 				var pedido = new Pedido
 				{
 					NumeroPedido = await _unitOfWork.Pedidos.GerarNumeroPedidoAsync(),
@@ -78,10 +103,18 @@ namespace LojaVirtual.Aplicacao.Services
 					Status = StatusPedido.Pendente,
 					ClienteId = dto.ClienteId,
 					EscolaId = dto.EscolaId,
-					ValorFrete = dto.ValorFrete,
+					Cliente = cliente,
+					Escola = escola,
+					ValorFrete = opcaoFrete.Valor,
 					ValorDesconto = dto.ValorDesconto,
-					PrazoEntregaDias = dto.PrazoEntregaDias,
+					PrazoPreparacaoDias = opcaoFrete.PrazoPreparacaoDias,
+					PrazoEnvioDias = opcaoFrete.PrazoEnvioDias,
+					PrazoEntregaDias = opcaoFrete.PrazoEntregaDias,
 					Observacoes = dto.Observacoes,
+					TipoEntrega = dto.TipoEntrega,
+					TransportadoraFrete = dto.TransportadoraFrete ?? opcaoFrete.NomeTransportadora,
+					ServicoFrete = dto.NomeServicoFrete ?? opcaoFrete.NomeServico,
+					CodigoServicoFrete = dto.CodigoServicoFrete ?? opcaoFrete.CodigoServico,
 					NomeEntrega = dto.NomeEntrega,
 					TelefoneEntrega = dto.TelefoneEntrega,
 					CepEntrega = dto.CepEntrega,
@@ -124,7 +157,9 @@ namespace LojaVirtual.Aplicacao.Services
 					var item = new ItemPedido
 					{
 						ProdutoId = itemDto.ProdutoId,
+						Produto = produto,
 						ProdutoTamanhoId = itemDto.ProdutoTamanhoId,
+						ProdutoTamanho = tamanho,
 						Quantidade = itemDto.Quantidade,
 						PrecoUnitario = precoUnitario,
 						ValorTotal = precoUnitario * itemDto.Quantidade,
@@ -157,7 +192,7 @@ namespace LojaVirtual.Aplicacao.Services
 				}
 
 				pedido.ValorSubtotal = valorSubtotal;
-				pedido.ValorTotal = valorSubtotal + dto.ValorFrete - dto.ValorDesconto;
+				pedido.ValorTotal = valorSubtotal + pedido.ValorFrete - dto.ValorDesconto;
 
 				await _unitOfWork.Pedidos.AdicionarAsync(pedido);
 				await _unitOfWork.SalvarMudancasAsync();
@@ -281,6 +316,7 @@ namespace LojaVirtual.Aplicacao.Services
 			}
 
 			pedido.NotaFiscalUrl = dto.NotaFiscalUrl;
+			pedido.NotaFiscalKey = dto.NotaFiscalKey;
 			pedido.DataAtualizacao = DateTime.UtcNow;
 
 			await _unitOfWork.Pedidos.AtualizarAsync(pedido);
@@ -292,6 +328,43 @@ namespace LojaVirtual.Aplicacao.Services
 			}
 
 			return pedido.Adapt<PedidoDTO>();
+		}
+
+		private OpcaoFreteDTO ObterOpcaoFreteFinal(CriarPedidoDTO dto, CotacaoFreteResponseDTO cotacaoFrete)
+		{
+			var providerMelhorEnvioSelecionado = string.Equals(dto.ProviderFrete, "MelhorEnvio", StringComparison.OrdinalIgnoreCase);
+			var cotacaoDinamicaDisponivel = string.Equals(cotacaoFrete.ProviderUtilizado, "MelhorEnvio", StringComparison.OrdinalIgnoreCase) &&
+				!cotacaoFrete.UsandoFallbackFixo;
+
+			if (providerMelhorEnvioSelecionado && cotacaoDinamicaDisponivel)
+			{
+				return _freteService.SelecionarOpcao(cotacaoFrete, dto.CodigoServicoFrete);
+			}
+
+			if (providerMelhorEnvioSelecionado && dto.ValorFrete > 0 && dto.PrazoEntregaDias > 0)
+			{
+				_logger.LogWarning(
+					"Pedido usando cotação escolhida no checkout como fallback. Pedido cliente {ClienteId}, serviço {CodigoServicoFrete}, valor {ValorFrete}, prazo {PrazoEntregaDias}. Mensagem cotação: {Mensagem}",
+					dto.ClienteId,
+					dto.CodigoServicoFrete,
+					dto.ValorFrete,
+					dto.PrazoEntregaDias,
+					cotacaoFrete.Mensagem);
+
+				return new OpcaoFreteDTO
+				{
+					Provider = "MelhorEnvio",
+					CodigoServico = dto.CodigoServicoFrete,
+					NomeServico = dto.NomeServicoFrete ?? "Frete Melhor Envio",
+					NomeTransportadora = dto.TransportadoraFrete,
+					Valor = dto.ValorFrete,
+					PrazoPreparacaoDias = dto.PrazoPreparacaoDias,
+					PrazoEnvioDias = dto.PrazoEnvioDias,
+					PrazoEntregaDias = dto.PrazoEntregaDias
+				};
+			}
+
+			return _freteService.SelecionarOpcao(cotacaoFrete, dto.CodigoServicoFrete);
 		}
 	}
 }

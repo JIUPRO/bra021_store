@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ClienteService, ClienteDTO } from '../../services/cliente.service';
 import { AlertService } from '../../services/alert.service';
 import { PaginationComponent } from '../../components/pagination/pagination.component';
@@ -11,11 +12,22 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
   imports: [CommonModule, FormsModule, PaginationComponent],
   template: `
     <div class="clientes-page">
-      <div class="d-flex justify-content-between align-items-center mb-4">
+      <div class="mb-4">
         <h2 class="fw-bold mb-0"><i class="bi bi-people me-2"></i>Clientes</h2>
-        <button class="btn btn-outline-primary" (click)="exportar()">
-          <i class="bi bi-download me-2"></i>Exportar
-        </button>
+      </div>
+
+      <div class="card card-dashboard mb-4">
+        <div class="card-body py-3">
+          <div class="input-group filtro-nome">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              type="text"
+              class="form-control"
+              [(ngModel)]="filtroNome"
+              (ngModelChange)="aplicarFiltro()"
+              placeholder="Buscar cliente por nome">
+          </div>
+        </div>
       </div>
 
       <div class="card card-dashboard">
@@ -33,8 +45,11 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
                 </tr>
               </thead>
               <tbody>
+                <tr *ngIf="!clientesPaginados.length">
+                  <td colspan="6" class="text-center text-muted py-4">Nenhum cliente encontrado.</td>
+                </tr>
                 <tr *ngFor="let cliente of clientesPaginados">
-                  <td><strong>{{ cliente.nome }}</strong></td>
+                  <td><strong>{{ formatarNome(cliente.nome) }}</strong></td>
                   <td>{{ cliente.email }}</td>
                   <td>{{ cliente.telefone }}</td>
                   <td>{{ cliente.cidade }}</td>
@@ -79,16 +94,23 @@ import { PaginationComponent } from '../../components/pagination/pagination.comp
       vertical-align: middle;
       padding: 16px;
     }
+
+    .filtro-nome {
+      min-width: 280px;
+    }
   `]
 })
 export class ClientesComponent implements OnInit {
   private clienteService = inject(ClienteService);
   private alertService = inject(AlertService);
+  private router = inject(Router);
 
   clientes: ClienteDTO[] = [];
+  clientesFiltrados: ClienteDTO[] = [];
   clientesPaginados: ClienteDTO[] = [];
   paginaAtual = 1;
   itensPorPagina = 10;
+  filtroNome = '';
 
   ngOnInit(): void {
     this.carregarClientes();
@@ -98,7 +120,7 @@ export class ClientesComponent implements OnInit {
     this.clienteService.getAll().subscribe({
       next: (list) => {
         this.clientes = list;
-        this.atualizarPaginacao();
+        this.aplicarFiltro();
       },
       error: (err) => {
         console.error('Erro carregando clientes', err);
@@ -107,13 +129,8 @@ export class ClientesComponent implements OnInit {
     });
   }
 
-  exportar(): void {
-    // Implementar exportação em CSV/Excel
-    this.alertService.info('Exportar', 'Exportando clientes...');
-  }
-
   verDetalhes(cliente: any): void {
-    this.alertService.info('Cliente', 'Detalhes do cliente: ' + cliente.nome);
+    this.router.navigate(['/clientes', cliente.id]);
   }
 
   onPaginar(event: { pagina: number; itensPorPagina: number }): void {
@@ -125,6 +142,28 @@ export class ClientesComponent implements OnInit {
   private atualizarPaginacao(): void {
     const inicio = (this.paginaAtual - 1) * this.itensPorPagina;
     const fim = inicio + this.itensPorPagina;
-    this.clientesPaginados = this.clientes.slice(inicio, fim);
+    this.clientesPaginados = this.clientesFiltrados.slice(inicio, fim);
+  }
+
+  aplicarFiltro(): void {
+    const termo = this.filtroNome.trim().toLowerCase();
+    this.clientesFiltrados = !termo
+      ? [...this.clientes]
+      : this.clientes.filter(cliente => cliente.nome.toLowerCase().includes(termo));
+    this.paginaAtual = 1;
+    this.atualizarPaginacao();
+  }
+
+  formatarNome(nome?: string): string {
+    if (!nome) {
+      return '';
+    }
+
+    return nome
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(parte => parte.charAt(0).toUpperCase() + parte.slice(1))
+      .join(' ');
   }
 }

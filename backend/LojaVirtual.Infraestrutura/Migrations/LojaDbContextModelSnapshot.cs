@@ -17,7 +17,7 @@ namespace LojaVirtual.Infraestrutura.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.0")
+                .HasAnnotation("ProductVersion", "10.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -38,6 +38,10 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ImagemKey")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
@@ -191,6 +195,52 @@ namespace LojaVirtual.Infraestrutura.Migrations
                     b.HasIndex("Email", "DataExpiracao");
 
                     b.ToTable("ClientesTrocaSenha", (string)null);
+                });
+
+            modelBuilder.Entity("LojaVirtual.Dominio.Entidades.UsuarioTrocaSenha", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<DateTime?>("DataAtualizacao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DataExpiracao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("Utilizado")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("Email", "DataExpiracao");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("UsuariosTrocaSenha", (string)null);
                 });
 
             modelBuilder.Entity("LojaVirtual.Dominio.Entidades.Escola", b =>
@@ -388,6 +438,10 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("Secao")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -433,6 +487,14 @@ namespace LojaVirtual.Infraestrutura.Migrations
                     b.Property<Guid>("ClienteId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("CodigoRastreio")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CodigoServicoFrete")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("ComplementoEntrega")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -443,7 +505,16 @@ namespace LojaVirtual.Infraestrutura.Migrations
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DataEntrega")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DataEtiquetaGerada")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("DataPedido")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DataPostagem")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid?>("EscolaId")
@@ -459,6 +530,14 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("MelhorEnvioPedidoId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MelhorEnvioProtocolo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("MetodoPagamento")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -467,6 +546,10 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NotaFiscalKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("NotaFiscalUrl")
                         .HasMaxLength(500)
@@ -492,13 +575,43 @@ namespace LojaVirtual.Infraestrutura.Migrations
                     b.Property<int>("PrazoEntregaDias")
                         .HasColumnType("int");
 
+                    b.Property<int>("PrazoEnvioDias")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PrazoPreparacaoDias")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ServicoFrete")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
+
+                    b.Property<string>("StatusLogistico")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("TelefoneEntrega")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TipoEntrega")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TransportadoraFrete")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UrlEtiqueta")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("UrlRastreio")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<decimal>("ValorDesconto")
                         .HasPrecision(18, 2)
@@ -538,9 +651,6 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<double?>("Altura")
-                        .HasColumnType("float");
-
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
@@ -564,20 +674,18 @@ namespace LojaVirtual.Infraestrutura.Migrations
                     b.Property<bool>("Destaque")
                         .HasColumnType("bit");
 
-                    b.Property<string>("ImagemUrl")
+                    b.Property<string>("ImagemKey")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<double?>("Largura")
-                        .HasColumnType("float");
+                    b.Property<string>("ImagemUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<double>("Peso")
-                        .HasColumnType("float");
 
                     b.Property<int>("PrazoEntregaDias")
                         .HasColumnType("int");
@@ -589,9 +697,6 @@ namespace LojaVirtual.Infraestrutura.Migrations
                     b.Property<decimal?>("PrecoPromocional")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<double?>("Profundidade")
-                        .HasColumnType("float");
 
                     b.Property<int>("QuantidadeMinimaEstoque")
                         .HasColumnType("int");
@@ -619,6 +724,9 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<double?>("Altura")
+                        .HasColumnType("float");
+
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
@@ -628,8 +736,17 @@ namespace LojaVirtual.Infraestrutura.Migrations
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("datetime2");
 
+                    b.Property<double?>("Largura")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Peso")
+                        .HasColumnType("float");
+
                     b.Property<Guid>("ProdutoId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<double?>("Profundidade")
+                        .HasColumnType("float");
 
                     b.Property<int>("QuantidadeEstoque")
                         .HasColumnType("int");
@@ -699,6 +816,17 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .IsRequired();
 
                     b.Navigation("Cliente");
+                });
+
+            modelBuilder.Entity("LojaVirtual.Dominio.Entidades.UsuarioTrocaSenha", b =>
+                {
+                    b.HasOne("LojaVirtual.Dominio.Entidades.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("LojaVirtual.Dominio.Entidades.ItemPedido", b =>

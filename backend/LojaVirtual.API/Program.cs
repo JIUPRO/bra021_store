@@ -74,6 +74,7 @@ builder.Services.AddScoped<MovimentacaoEstoqueRepository>();
 
 // Registrar Serviços de Notificação
 builder.Services.AddScoped<INotificacaoService, NotificacaoService>();
+builder.Services.AddHttpClient<IStorageService, StorageService>();
 
 // Registrar Serviços da Aplicação
 builder.Services.AddScoped<ICategoriaService, CategoriaService>();
@@ -83,6 +84,8 @@ builder.Services.AddScoped<IPedidoService, PedidoService>();
 builder.Services.AddScoped<IEstoqueService, EstoqueService>();
 builder.Services.AddScoped<IEscolaService, EscolaService>();
 builder.Services.AddScoped<IParametroSistemaService, ParametroSistemaService>();
+builder.Services.AddScoped<IFreteService, FreteService>();
+builder.Services.AddScoped<ILogisticaService, LogisticaService>();
 builder.Services.AddScoped<AutenticacaoService>();
 builder.Services.AddScoped<RelatorioService>();
 
@@ -147,7 +150,200 @@ using (var scope = app.Services.CreateScope())
 			Chave = "TipoEnderecoEntrega",
 			Valor = "Escola",
 			Descricao = "Define como o endereço de entrega é tratado: Cliente, Escola ou Ambos",
+			Secao = "Entrega",
 			Tipo = "Lista",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "FreteHabilitado",
+			Valor = "false",
+			Descricao = "Liga ou desliga a rotina de frete configurável no checkout",
+			Secao = "Frete",
+			Tipo = "Boolean",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "FreteProvider",
+			Valor = "Fixo",
+			Descricao = "Define se o checkout usará frete fixo ou integração com Melhor Envio",
+			Secao = "Frete",
+			Tipo = "Lista",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "FreteCepOrigem",
+			Valor = "",
+			Descricao = "CEP de origem usado para cotação dinâmica de frete",
+			Secao = "Frete",
+			Tipo = "Cep",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "FretePrazoPreparacaoDias",
+			Valor = "0",
+			Descricao = "Prazo interno em dias para separação, emissão e postagem antes do prazo da transportadora",
+			Secao = "Frete",
+			Tipo = "Numero",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioNaoComercial",
+			Valor = "true",
+			Descricao = "Define se a etiqueta será gerada como envio não comercial para testes/sandbox",
+			Secao = "Melhor Envio",
+			Tipo = "Boolean",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteNome",
+			Valor = "",
+			Descricao = "Nome do remetente usado na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteTelefone",
+			Valor = "",
+			Descricao = "Telefone do remetente usado na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteEmail",
+			Valor = "",
+			Descricao = "Email do remetente usado na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteDocumento",
+			Valor = "",
+			Descricao = "CPF ou CNPJ do remetente usado na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteInscricaoEstadual",
+			Valor = "ISENTO",
+			Descricao = "Inscrição estadual do remetente usada na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteLogradouro",
+			Valor = "",
+			Descricao = "Logradouro do remetente usado na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteNumero",
+			Valor = "",
+			Descricao = "Número do endereço do remetente usado na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteComplemento",
+			Valor = "",
+			Descricao = "Complemento do endereço do remetente usado na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteBairro",
+			Valor = "",
+			Descricao = "Bairro do remetente usado na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteCidade",
+			Valor = "",
+			Descricao = "Cidade do remetente usada na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
+			DataCriacao = DateTime.UtcNow,
+			DataAtualizacao = DateTime.UtcNow,
+			Ativo = true
+		},
+		new LojaVirtual.Dominio.Entidades.ParametroSistema
+		{
+			Id = Guid.NewGuid(),
+			Chave = "MelhorEnvioRemetenteEstado",
+			Valor = "",
+			Descricao = "UF do remetente usada na geração da etiqueta do Melhor Envio",
+			Secao = "Melhor Envio",
+			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
 			Ativo = true
@@ -158,6 +354,7 @@ using (var scope = app.Services.CreateScope())
 			Chave = "CarrosselImagem1",
 			Valor = "",
 			Descricao = "URL da primeira imagem do carrossel da home",
+			Secao = "Home",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -169,6 +366,7 @@ using (var scope = app.Services.CreateScope())
 			Chave = "CarrosselImagem2",
 			Valor = "",
 			Descricao = "URL da segunda imagem do carrossel da home",
+			Secao = "Home",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -180,6 +378,7 @@ using (var scope = app.Services.CreateScope())
 			Chave = "CarrosselImagem3",
 			Valor = "",
 			Descricao = "URL da terceira imagem do carrossel da home",
+			Secao = "Home",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -191,6 +390,7 @@ using (var scope = app.Services.CreateScope())
 			Chave = "CarrosselImagem4",
 			Valor = "",
 			Descricao = "URL da quarta imagem do carrossel da home",
+			Secao = "Home",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,

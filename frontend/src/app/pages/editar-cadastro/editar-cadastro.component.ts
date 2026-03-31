@@ -370,6 +370,7 @@ export class EditarCadastroComponent implements OnInit {
 
     // Preparar DTO para atualização
     const atualizarClienteDTO = {
+      id: this.dados.id,
       nome: this.dados.nome,
       email: this.dados.email,
       telefone: this.dados.telefone,

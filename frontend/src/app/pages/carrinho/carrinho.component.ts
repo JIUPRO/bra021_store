@@ -2,8 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { CarrinhoService } from '../../services/carrinho.service';
 import { AlertService } from '../../services/alert.service';
+import { ParametroSistemaService } from '../../services/parametro-sistema.service';
 import { ItemCarrinho } from '../../models/produto.model';
 
 @Component({
@@ -96,11 +98,11 @@ import { ItemCarrinho } from '../../models/produto.model';
                 <span>Subtotal ({{ quantidadeItens }} itens)</span>
                 <span>R$ {{ subtotal | number:'1.2-2' }}</span>
               </div>
-              <div class="d-flex justify-content-between mb-2">
+              <div class="d-flex justify-content-between mb-2" *ngIf="!usarFreteMelhorEnvio">
                 <span>Frete</span>
                 <span class="text-muted">R$ {{ calcularFrete() | number:'1.2-2' }}</span>
               </div>
-              <div class="d-flex justify-content-between mb-2">
+              <div class="d-flex justify-content-between mb-2" *ngIf="!usarFreteMelhorEnvio">
                 <span>Prazo de entrega</span>
                 <span class="text-muted">{{ calcularPrazoEntrega() }} dias</span>
               </div>
@@ -110,8 +112,10 @@ import { ItemCarrinho } from '../../models/produto.model';
               </div>
               <hr>
               <div class="d-flex justify-content-between mb-4">
-                <span class="fw-bold fs-5">Total</span>
-                <span class="fw-bold fs-5 text-primary">R$ {{ (subtotal + calcularFrete()) | number:'1.2-2' }}</span>
+                <span class="fw-bold fs-5">{{ usarFreteMelhorEnvio ? 'Total dos produtos' : 'Total' }}</span>
+                <span class="fw-bold fs-5 text-primary">
+                  R$ {{ (usarFreteMelhorEnvio ? subtotal : (subtotal + calcularFrete())) | number:'1.2-2' }}
+                </span>
               </div>
               <button class="btn btn-primario w-100 btn-lg" (click)="finalizarCompra()">
                 <i class="bi bi-check-circle me-2"></i>Finalizar Compra
@@ -122,9 +126,14 @@ import { ItemCarrinho } from '../../models/produto.model';
           <div class="card mt-3">
             <div class="card-body">
               <h6 class="fw-bold mb-3"><i class="bi bi-truck me-2"></i>Frete e Entrega</h6>
-              <p class="text-muted small mb-0">
+              <p class="text-muted small mb-0" *ngIf="!usarFreteMelhorEnvio; else mensagemMelhorEnvio">
                 O frete e o prazo exibidos consideram o maior valor entre os itens do carrinho.
               </p>
+              <ng-template #mensagemMelhorEnvio>
+                <p class="text-muted small mb-0">
+                  O frete e o prazo serão calculados no fechamento do pedido, após informar o CEP de entrega.
+                </p>
+              </ng-template>
             </div>
           </div>
         </div>
@@ -151,17 +160,26 @@ import { ItemCarrinho } from '../../models/produto.model';
 })
 export class CarrinhoComponent implements OnInit {
   itens: ItemCarrinho[] = [];
+  freteHabilitado = false;
+  freteProvider = 'Fixo';
 
   constructor(
     private carrinhoService: CarrinhoService,
     private router: Router,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private parametroSistemaService: ParametroSistemaService
   ) {}
 
   ngOnInit(): void {
     this.carrinhoService.carrinho$.subscribe(itens => {
       this.itens = itens;
     });
+
+    this.carregarConfiguracaoFrete();
+  }
+
+  get usarFreteMelhorEnvio(): boolean {
+    return this.freteHabilitado && this.freteProvider === 'MelhorEnvio';
   }
 
   get quantidadeItens(): number {
@@ -227,5 +245,21 @@ export class CarrinhoComponent implements OnInit {
 
   finalizarCompra(): void {
     this.router.navigate(['/checkout']);
+  }
+
+  private carregarConfiguracaoFrete(): void {
+    forkJoin({
+      freteHabilitado: this.parametroSistemaService.obterPorChave('FreteHabilitado'),
+      freteProvider: this.parametroSistemaService.obterPorChave('FreteProvider')
+    }).subscribe({
+      next: ({ freteHabilitado, freteProvider }) => {
+        this.freteHabilitado = freteHabilitado?.valor?.toLowerCase() === 'true';
+        this.freteProvider = freteProvider?.valor || 'Fixo';
+      },
+      error: () => {
+        this.freteHabilitado = false;
+        this.freteProvider = 'Fixo';
+      }
+    });
   }
 }

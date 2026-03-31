@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { HeaderComponent } from './components/header/header.component';
+import { DocumentoVisualizadorComponent } from './components/documento-visualizador/documento-visualizador.component';
 import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, SidebarComponent, HeaderComponent],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, HeaderComponent, DocumentoVisualizadorComponent],
   template: `
     <div class="app-container" [class.login-view]="!estaAutenticado()">
       <app-sidebar *ngIf="estaAutenticado()"></app-sidebar>
@@ -19,6 +20,7 @@ import { AuthService } from './services/auth.service';
         </div>
       </div>
     </div>
+    <app-documento-visualizador></app-documento-visualizador>
   `,
   styles: [`
     .app-container {

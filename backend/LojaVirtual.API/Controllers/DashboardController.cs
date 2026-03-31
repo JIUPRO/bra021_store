@@ -29,7 +29,7 @@ namespace LojaVirtual.API.Controllers
 			var totalPedidos = await _dbContext.Pedidos.CountAsync();
 			var vendasMes = await _dbContext.Pedidos
 				.Where(p => p.DataPedido >= inicioMes && p.DataPedido < proximoMes)
-				.SumAsync(p => (decimal?)p.ValorTotal) ?? 0m;
+				.SumAsync(p => (decimal?)p.ValorSubtotal) ?? 0m;
 
 			var totalProdutos = await _dbContext.Produtos.CountAsync(p => p.Ativo);
 			var totalClientes = await _dbContext.Clientes.CountAsync(c => c.Ativo);

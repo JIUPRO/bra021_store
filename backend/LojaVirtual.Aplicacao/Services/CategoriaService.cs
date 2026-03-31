@@ -13,6 +13,7 @@ namespace LojaVirtual.Aplicacao.Services
 		Task<CategoriaDTO?> ObterComProdutosAsync(Guid id);
 		Task<CategoriaDTO> CriarAsync(CriarCategoriaDTO dto);
 		Task<CategoriaDTO?> AtualizarAsync(AtualizarCategoriaDTO dto);
+		Task<CategoriaDTO?> AtualizarImagemAsync(Guid id, string? imagemUrl, string? imagemKey);
 		Task<bool> RemoverAsync(Guid id);
 	}
 
@@ -83,6 +84,24 @@ namespace LojaVirtual.Aplicacao.Services
 			}
 
 			dto.Adapt(categoriaExistente);
+			categoriaExistente.DataAtualizacao = DateTime.UtcNow;
+
+			await _unitOfWork.Categorias.AtualizarAsync(categoriaExistente);
+			await _unitOfWork.SalvarMudancasAsync();
+
+			return categoriaExistente.Adapt<CategoriaDTO>();
+		}
+
+		public async Task<CategoriaDTO?> AtualizarImagemAsync(Guid id, string? imagemUrl, string? imagemKey)
+		{
+			var categoriaExistente = await _unitOfWork.Categorias.ObterPorIdAsync(id);
+			if (categoriaExistente == null)
+			{
+				return null;
+			}
+
+			categoriaExistente.ImagemUrl = imagemUrl;
+			categoriaExistente.ImagemKey = imagemKey;
 			categoriaExistente.DataAtualizacao = DateTime.UtcNow;
 
 			await _unitOfWork.Categorias.AtualizarAsync(categoriaExistente);

@@ -10,10 +10,12 @@ import { AlertService } from '../../services/alert.service';
 import { EscolaService } from '../../services/escola.service';
 import { ParametroSistemaService } from '../../services/parametro-sistema.service';
 import { PagamentoService } from '../../services/pagamento.service';
+import { FreteService } from '../../services/frete.service';
 import { ItemCarrinho } from '../../models/produto.model';
 import { Cliente } from '../../models/cliente.model';
 import { CriarPedido, StatusPedido } from '../../models/pedido.model';
 import { Escola } from '../../models/escola.model';
+import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
 
 @Component({
   selector: 'app-checkout',
@@ -370,6 +372,31 @@ import { Escola } from '../../models/escola.model';
               </div>
               
               <hr>
+
+              <div class="mb-3" *ngIf="opcoesFrete.length > 1">
+                <small class="text-muted d-block mb-2">Opções de entrega</small>
+                <div class="frete-option"
+                     *ngFor="let opcao of opcoesFrete"
+                     [class.selected]="opcaoSelecionada?.codigoServico === opcao.codigoServico"
+                     (click)="selecionarOpcaoFrete(opcao)">
+                  <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                      <strong class="d-block">{{ opcao.nomeTransportadora || opcao.provider }}</strong>
+                      <small class="text-muted">{{ opcao.nomeServico }} • {{ opcao.prazoEntregaDias }} dias</small>
+                    </div>
+                    <strong>R$ {{ opcao.valor | number:'1.2-2' }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="carregandoFrete" class="alert alert-light border d-flex align-items-center gap-2 py-2">
+                <span class="spinner-border spinner-border-sm"></span>
+                <small>Atualizando frete...</small>
+              </div>
+
+              <div *ngIf="mensagemFrete" class="alert alert-warning py-2">
+                <small>{{ mensagemFrete }}</small>
+              </div>
               
               <div class="d-flex justify-content-between mb-2">
                 <span>Subtotal</span>
@@ -377,11 +404,11 @@ import { Escola } from '../../models/escola.model';
               </div>
               <div class="d-flex justify-content-between mb-2">
                 <span>Frete</span>
-                <span class="text-success">R$ {{ calcularFrete() | number:'1.2-2' }}</span>
+                <span class="text-success">R$ {{ valorFreteAtual | number:'1.2-2' }}</span>
               </div>
               <div class="d-flex justify-content-between mb-2">
                 <span>Prazo de entrega</span>
-                <span class="text-muted">{{ calcularPrazoEntrega() }} dias</span>
+                <span class="text-muted">{{ prazoEntregaAtual }} dias</span>
               </div>
               <div class="d-flex justify-content-between mb-3">
                 <span>Desconto</span>
@@ -490,6 +517,26 @@ import { Escola } from '../../models/escola.model';
       background-color: rgba(251, 191, 36, 0.1);
       box-shadow: 0 4px 12px rgba(47, 106, 73, 0.15);
     }
+
+    .frete-option {
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 8px;
+    }
+
+    .frete-option:hover {
+      border-color: var(--cor-primaria);
+      background-color: #f8f9fa;
+    }
+
+    .frete-option.selected {
+      border-color: var(--cor-primaria);
+      background-color: rgba(251, 191, 36, 0.12);
+      box-shadow: 0 2px 8px rgba(47, 106, 73, 0.12);
+    }
   `]
 })
 export class CheckoutComponent implements OnInit, OnDestroy {
@@ -519,6 +566,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   valorParcelado: number = 0;
   maxParcelas: number = 3;
   opcoesParcelamento: number[] = [1, 2, 3];
+  cotacaoFrete: CotacaoFreteResponse | null = null;
+  opcaoSelecionada: OpcaoFrete | null = null;
+  carregandoFrete = false;
+  mensagemFrete = '';
   dadosCartao = {
     cardNumber: '',
     cardholderName: '',
@@ -552,12 +603,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private escolaService: EscolaService,
     private parametroSistemaService: ParametroSistemaService,
     private pagamentoService: PagamentoService,
+    private freteService: FreteService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
     this.carrinhoService.carrinho$.subscribe(itens => {
       this.itens = itens;
+      this.atualizarCotacaoFrete();
       this.atualizarValorParcela();
     });
 
@@ -636,10 +689,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   onEscolaChange(): void {
     this.atualizarEscolaSelecionada();
-    this.aplicarEnderecoEntrega();
+    if (this.usarEnderecoEscola) {
+      this.redefinirSelecaoFrete();
+      this.aplicarEnderecoEntrega();
+    }
   }
 
   onEnderecoEntregaSelecionadoChange(): void {
+    this.redefinirSelecaoFrete();
     this.aplicarEnderecoEntrega();
   }
 
@@ -650,10 +707,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   private aplicarEnderecoEntrega(): void {
     if (this.usarEnderecoEscola) {
       this.preencherEnderecoDaEscola();
-      return;
+    } else {
+      this.preencherEnderecoDoCliente();
     }
 
-    this.preencherEnderecoDoCliente();
+    this.atualizarCotacaoFrete();
   }
 
   private preencherEnderecoDaEscola(): void {
@@ -716,7 +774,27 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   get total(): number {
-    return this.subtotal + this.calcularFrete();
+    return this.subtotal + this.valorFreteAtual;
+  }
+
+  get opcoesFrete(): OpcaoFrete[] {
+    return this.cotacaoFrete?.opcoes ?? [];
+  }
+
+  get valorFreteAtual(): number {
+    return this.opcaoSelecionada?.valor ?? this.calcularFrete();
+  }
+
+  get prazoEntregaAtual(): number {
+    return this.opcaoSelecionada?.prazoEntregaDias ?? this.calcularPrazoEntrega();
+  }
+
+  get prazoPreparacaoAtual(): number {
+    return this.opcaoSelecionada?.prazoPreparacaoDias ?? 0;
+  }
+
+  get prazoEnvioAtual(): number {
+    return this.opcaoSelecionada?.prazoEnvioDias ?? this.calcularPrazoEntrega();
   }
 
   calcularFrete(): number {
@@ -824,6 +902,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   buscarCep(): void {
     // Aqui você pode integrar com uma API de CEP
     console.log('Buscar CEP:', this.dadosEntrega.cep);
+    this.atualizarCotacaoFrete();
   }
 
   verificarCpf(): void {
@@ -950,9 +1029,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         observacoes: item.observacoes,
         produtoTamanhoId: item.produtoVariacaoId
       })),
-      valorFrete: this.calcularFrete(),
+      valorFrete: this.valorFreteAtual,
       valorDesconto: 0,
-      prazoEntregaDias: this.calcularPrazoEntrega(),
+      prazoPreparacaoDias: this.prazoPreparacaoAtual,
+      prazoEnvioDias: this.prazoEnvioAtual,
+      prazoEntregaDias: this.prazoEntregaAtual,
       observacoes: this.observacoes,
       nomeEntrega: this.dadosEntrega.nome,
       telefoneEntrega: this.dadosEntrega.telefone,
@@ -962,7 +1043,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       complementoEntrega: this.dadosEntrega.complemento,
       bairroEntrega: this.dadosEntrega.bairro,
       cidadeEntrega: this.dadosEntrega.cidade,
-      estadoEntrega: this.dadosEntrega.estado
+      estadoEntrega: this.dadosEntrega.estado,
+      tipoEntrega: this.usarEnderecoEscola ? 'Escola' : 'Cliente',
+      providerFrete: this.opcaoSelecionada?.provider,
+      transportadoraFrete: this.opcaoSelecionada?.nomeTransportadora,
+      codigoServicoFrete: this.opcaoSelecionada?.codigoServico,
+      nomeServicoFrete: this.opcaoSelecionada?.nomeServico
     };
 
     try {
@@ -1132,6 +1218,113 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       clearInterval(this.verificandoPagamento);
       this.verificandoPagamento = null;
     }
+  }
+
+  selecionarOpcaoFrete(opcao: OpcaoFrete): void {
+    this.opcaoSelecionada = opcao;
+    this.atualizarValorParcela();
+  }
+
+  private atualizarCotacaoFrete(): void {
+    const estadoCotacao = this.obterEstadoCotacaoFrete();
+    if (!estadoCotacao.pronto || !estadoCotacao.cepDestino) {
+      this.limparCotacaoFrete(estadoCotacao.mensagem);
+      return;
+    }
+
+    const request = {
+      cepDestino: estadoCotacao.cepDestino,
+      codigoServico: this.podeReutilizarServicoSelecionado(estadoCotacao.cepDestino)
+        ? this.opcaoSelecionada?.codigoServico
+        : undefined,
+      itens: this.itens.map(item => ({
+        produtoId: item.produto.id,
+        produtoTamanhoId: item.produtoVariacaoId,
+        quantidade: item.quantidade
+      }))
+    };
+
+    this.carregandoFrete = true;
+    this.freteService.cotar(request).subscribe({
+      next: (cotacao) => {
+        this.cotacaoFrete = cotacao;
+        this.mensagemFrete = cotacao.mensagem || '';
+
+        const opcaoAtual = cotacao.opcoes.find(opcao => opcao.codigoServico === this.opcaoSelecionada?.codigoServico);
+        this.opcaoSelecionada = opcaoAtual || cotacao.opcoes[0] || null;
+
+        this.carregandoFrete = false;
+        this.atualizarValorParcela();
+      },
+      error: (erro) => {
+        console.error('Erro ao cotar frete', erro);
+        this.cotacaoFrete = null;
+        this.opcaoSelecionada = null;
+        this.mensagemFrete = 'Não foi possível atualizar o frete agora. O valor fixo do produto será usado no pedido.';
+        this.carregandoFrete = false;
+        this.atualizarValorParcela();
+      }
+    });
+  }
+
+  private obterEstadoCotacaoFrete(): { pronto: boolean; cepDestino?: string; mensagem: string } {
+    if (this.itens.length === 0) {
+      return { pronto: false, mensagem: '' };
+    }
+
+    if (this.usarEnderecoEscola) {
+      if (!this.escolaId) {
+        return { pronto: false, mensagem: 'Selecione a escola para calcular o frete e o prazo de entrega.' };
+      }
+
+      if (!this.enderecoEntregaValido()) {
+        return { pronto: false, mensagem: 'A escola selecionada precisa ter um endereço completo para calcular o frete.' };
+      }
+
+      return { pronto: true, cepDestino: this.dadosEntrega.cep, mensagem: '' };
+    }
+
+    const cepDestino = (this.dadosEntrega.cep || '').replace(/\D/g, '');
+    if (this.cliente?.id) {
+      if (!cepDestino) {
+        return { pronto: false, mensagem: 'Atualize seu endereço para calcular o frete e o prazo de entrega.' };
+      }
+
+      if (!this.enderecoEntregaValido()) {
+        return { pronto: false, mensagem: 'Complete seu endereço para calcular o frete e o prazo de entrega.' };
+      }
+
+      return { pronto: true, cepDestino, mensagem: '' };
+    }
+
+    if (cepDestino.length !== 8) {
+      return { pronto: false, mensagem: 'Informe o CEP de entrega para calcular o frete e o prazo.' };
+    }
+
+    return { pronto: true, cepDestino, mensagem: '' };
+  }
+
+  private limparCotacaoFrete(mensagem: string): void {
+    this.cotacaoFrete = null;
+    this.opcaoSelecionada = null;
+    this.carregandoFrete = false;
+    this.mensagemFrete = mensagem;
+    this.atualizarValorParcela();
+  }
+
+  private redefinirSelecaoFrete(): void {
+    this.cotacaoFrete = null;
+    this.opcaoSelecionada = null;
+    this.mensagemFrete = '';
+  }
+
+  private podeReutilizarServicoSelecionado(cepDestino: string): boolean {
+    return !!(
+      this.opcaoSelecionada &&
+      this.opcaoSelecionada.provider === 'MelhorEnvio' &&
+      this.cotacaoFrete?.providerUtilizado === 'MelhorEnvio' &&
+      this.cotacaoFrete?.cepDestino === cepDestino
+    );
   }
 
   ngOnDestroy(): void {
