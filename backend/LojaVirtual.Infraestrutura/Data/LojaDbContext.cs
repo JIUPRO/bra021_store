@@ -123,8 +123,8 @@ namespace LojaVirtual.Infraestrutura.Data
 				entity.Property(e => e.TransportadoraFrete).HasMaxLength(100);
 				entity.Property(e => e.ServicoFrete).HasMaxLength(100);
 				entity.Property(e => e.CodigoServicoFrete).HasMaxLength(50);
-				entity.Property(e => e.MelhorEnvioPedidoId).HasMaxLength(100);
-				entity.Property(e => e.MelhorEnvioProtocolo).HasMaxLength(100);
+				entity.Property(e => e.IntegracaoFretePedidoId).HasMaxLength(100);
+				entity.Property(e => e.IntegracaoFreteProtocolo).HasMaxLength(100);
 				entity.Property(e => e.CodigoRastreio).HasMaxLength(100);
 				entity.Property(e => e.UrlRastreio).HasMaxLength(500);
 				entity.Property(e => e.UrlEtiqueta).HasMaxLength(500);
@@ -281,3 +281,4 @@ namespace LojaVirtual.Infraestrutura.Data
 		}
 	}
 }
+

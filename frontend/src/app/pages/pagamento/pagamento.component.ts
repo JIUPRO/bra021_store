@@ -35,7 +35,7 @@ import { firstValueFrom } from 'rxjs';
                   <div 
                     class="payment-option" 
                     [class.selected]="metodoPagamento === 'pix'"
-                    (click)="metodoPagamento = 'pix'"
+                    (click)="selecionarMetodoPagamento('pix')"
                   >
                     <i class="bi bi-qr-code fs-1 text-primary"></i>
                     <h6 class="mt-2 mb-0">PIX</h6>
@@ -46,7 +46,7 @@ import { firstValueFrom } from 'rxjs';
                   <div 
                     class="payment-option" 
                     [class.selected]="metodoPagamento === 'credit_card'"
-                    (click)="metodoPagamento = 'credit_card'"
+                    (click)="selecionarMetodoPagamento('credit_card')"
                   >
                     <i class="bi bi-credit-card fs-1 text-success"></i>
                     <h6 class="mt-2 mb-0">Cartão de Crédito</h6>
@@ -91,13 +91,7 @@ import { firstValueFrom } from 'rxjs';
               </div>
               <div class="mb-3">
                 <label class="form-label">Número do Cartão</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  [(ngModel)]="dadosCartao.cardNumber"
-                  placeholder="0000 0000 0000 0000"
-                  maxlength="19"
-                >
+                <div id="pagamento-card-number" class="secure-field"></div>
               </div>
               <div class="mb-3">
                 <label class="form-label">Nome no Cartão</label>
@@ -109,35 +103,13 @@ import { firstValueFrom } from 'rxjs';
                 >
               </div>
               <div class="row">
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Mês</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    [(ngModel)]="dadosCartao.expirationMonth"
-                    placeholder="MM"
-                    maxlength="2"
-                  >
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Validade</label>
+                  <div id="pagamento-expiration-date" class="secure-field"></div>
                 </div>
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Ano</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    [(ngModel)]="dadosCartao.expirationYear"
-                    placeholder="AA"
-                    maxlength="2"
-                  >
-                </div>
-                <div class="col-md-4 mb-3">
+                <div class="col-md-6 mb-3">
                   <label class="form-label">CVV</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    [(ngModel)]="dadosCartao.securityCode"
-                    placeholder="123"
-                    maxlength="4"
-                  >
+                  <div id="pagamento-security-code" class="secure-field"></div>
                 </div>
               </div>
               <div class="mb-3">
@@ -263,6 +235,18 @@ import { firstValueFrom } from 'rxjs';
       box-shadow: 0 5px 15px rgba(47,106,73,0.18);
       color: var(--cor-escura);
     }
+
+    .secure-field {
+      border: 1px solid #ced4da;
+      border-radius: 0.375rem;
+      background: #fff;
+      height: 38px;
+      min-height: 38px;
+      padding: 0.4rem 0.75rem;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
     
     .btn-primario:disabled {
       background: var(--cor-secundaria);
@@ -298,13 +282,10 @@ export class PagamentoComponent implements OnInit, OnDestroy {
   private verificandoPagamento: any = null;
   private tentativasVerificacao: number = 0;
   private maxTentativas: number = 60; // 5 minutos (60 * 5s)
+  private secureFieldsPrefix = 'pagamento';
 
   dadosCartao = {
-    cardNumber: '',
     cardholderName: '',
-    expirationMonth: '',
-    expirationYear: '',
-    securityCode: '',
     cpf: ''
   };
 
@@ -354,6 +335,20 @@ export class PagamentoComponent implements OnInit, OnDestroy {
     this.valorParcelado = this.valorTotal / (this.parcelas || 1);
   }
 
+  selecionarMetodoPagamento(metodo: string): void {
+    this.metodoPagamento = metodo;
+
+    if (metodo === 'credit_card') {
+      setTimeout(() => {
+        this.pagamentoService.inicializarCamposCartaoSeguro(this.secureFieldsPrefix)
+          .catch(error => console.error('Erro ao inicializar Secure Fields:', error));
+      });
+      return;
+    }
+
+    this.pagamentoService.destruirCamposCartaoSeguro(this.secureFieldsPrefix);
+  }
+
   async processarPagamento(): Promise<void> {
     if (!this.metodoPagamento) {
       this.alertService.warning('Atenção', 'Selecione uma forma de pagamento');
@@ -374,10 +369,10 @@ export class PagamentoComponent implements OnInit, OnDestroy {
 
       if (this.metodoPagamento === 'credit_card') {
         try {
-          cardToken = await this.pagamentoService.criarTokenCartao(this.dadosCartao);
-        } catch (error) {
+          cardToken = await this.pagamentoService.criarTokenCartaoSeguro(this.secureFieldsPrefix, this.dadosCartao);
+        } catch (error: any) {
           this.processando = false;
-          this.alertService.error('Erro', 'Dados do cartão inválidos');
+          this.alertService.error('Erro', error?.message || 'Dados do cartão inválidos');
           return;
         }
       }
@@ -440,15 +435,12 @@ export class PagamentoComponent implements OnInit, OnDestroy {
   }
 
   abrirRetentativa(): void {
+    this.pagamentoService.destruirCamposCartaoSeguro(this.secureFieldsPrefix);
     this.metodoPagamento = '';
     this.parcelas = 1;
     this.atualizarValorParcela();
     this.dadosCartao = {
-      cardNumber: '',
       cardholderName: '',
-      expirationMonth: '',
-      expirationYear: '',
-      securityCode: '',
       cpf: ''
     };
     this.qrCodePix = '';
@@ -457,11 +449,7 @@ export class PagamentoComponent implements OnInit, OnDestroy {
 
   validarDadosCartao(): boolean {
     return !!(
-      this.dadosCartao.cardNumber &&
       this.dadosCartao.cardholderName &&
-      this.dadosCartao.expirationMonth &&
-      this.dadosCartao.expirationYear &&
-      this.dadosCartao.securityCode &&
       this.dadosCartao.cpf
     );
   }
@@ -518,6 +506,7 @@ export class PagamentoComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.pagamentoService.destruirCamposCartaoSeguro(this.secureFieldsPrefix);
     this.pararVerificacaoPagamento();
   }
 }

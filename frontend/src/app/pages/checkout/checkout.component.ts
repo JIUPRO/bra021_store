@@ -11,6 +11,7 @@ import { EscolaService } from '../../services/escola.service';
 import { ParametroSistemaService } from '../../services/parametro-sistema.service';
 import { PagamentoService } from '../../services/pagamento.service';
 import { FreteService } from '../../services/frete.service';
+import { CepService } from '../../services/cep.service';
 import { ItemCarrinho } from '../../models/produto.model';
 import { Cliente } from '../../models/cliente.model';
 import { CriarPedido, StatusPedido } from '../../models/pedido.model';
@@ -169,7 +170,12 @@ import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
                   <div class="row">
                     <div class="col-md-4 mb-3">
                       <label class="form-label">CEP *</label>
-                      <input type="text" class="form-control" [(ngModel)]="dadosEntrega.cep" placeholder="00000-000" (blur)="buscarCep()">
+                      <div class="input-group">
+                        <input type="text" class="form-control" [(ngModel)]="dadosEntrega.cep" placeholder="00000-000" (input)="aoDigitarCep($event)" (blur)="buscarCep()">
+                        <span class="input-group-text" *ngIf="buscandoCep">
+                          <span class="spinner-border spinner-border-sm cep-spinner" role="status" aria-hidden="true"></span>
+                        </span>
+                      </div>
                     </div>
                     <div class="col-md-8 mb-3">
                       <label class="form-label">Logradouro *</label>
@@ -224,7 +230,7 @@ import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
                   <div 
                     class="payment-option" 
                     [class.selected]="metodoPagamento === 'pix'"
-                    (click)="metodoPagamento = 'pix'"
+                    (click)="selecionarMetodoPagamento('pix')"
                   >
                     <i class="bi bi-qr-code fs-1 text-primary"></i>
                     <h6 class="mt-2 mb-0">PIX</h6>
@@ -235,7 +241,7 @@ import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
                   <div 
                     class="payment-option" 
                     [class.selected]="metodoPagamento === 'credit_card'"
-                    (click)="metodoPagamento = 'credit_card'"
+                    (click)="selecionarMetodoPagamento('credit_card')"
                   >
                     <i class="bi bi-credit-card fs-1 text-success"></i>
                     <h6 class="mt-2 mb-0">Cartão de Crédito</h6>
@@ -274,13 +280,7 @@ import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Número do Cartão *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    [(ngModel)]="dadosCartao.cardNumber"
-                    placeholder="0000 0000 0000 0000"
-                    maxlength="19"
-                  >
+                  <div id="checkout-card-number" class="secure-field"></div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Nome no Cartão *</label>
@@ -292,35 +292,13 @@ import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
                   >
                 </div>
                 <div class="row">
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label">Mês *</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      [(ngModel)]="dadosCartao.expirationMonth"
-                      placeholder="MM"
-                      maxlength="2"
-                    >
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Validade *</label>
+                    <div id="checkout-expiration-date" class="secure-field"></div>
                   </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label">Ano *</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      [(ngModel)]="dadosCartao.expirationYear"
-                      placeholder="AA"
-                      maxlength="2"
-                    >
-                  </div>
-                  <div class="col-md-4 mb-3">
+                  <div class="col-md-6 mb-3">
                     <label class="form-label">CVV *</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      [(ngModel)]="dadosCartao.securityCode"
-                      placeholder="123"
-                      maxlength="4"
-                    >
+                    <div id="checkout-security-code" class="secure-field"></div>
                   </div>
                 </div>
                 <div class="mb-3">
@@ -381,8 +359,8 @@ import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
                      (click)="selecionarOpcaoFrete(opcao)">
                   <div class="d-flex justify-content-between align-items-start gap-3">
                     <div>
-                      <strong class="d-block">{{ opcao.nomeTransportadora || opcao.provider }}</strong>
-                      <small class="text-muted">{{ opcao.nomeServico }} • {{ opcao.prazoEntregaDias }} dias</small>
+                      <div class="frete-servico">{{ opcao.nomeServico }}</div>
+                      <small class="text-muted d-block">{{ opcao.nomeTransportadora || opcao.provider }} • {{ opcao.prazoEntregaDias }} dias</small>
                     </div>
                     <strong>R$ {{ opcao.valor | number:'1.2-2' }}</strong>
                   </div>
@@ -518,6 +496,18 @@ import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
       box-shadow: 0 4px 12px rgba(47, 106, 73, 0.15);
     }
 
+    .secure-field {
+      border: 1px solid #ced4da;
+      border-radius: 0.375rem;
+      background: #fff;
+      height: 38px;
+      min-height: 38px;
+      padding: 0.4rem 0.75rem;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
     .frete-option {
       border: 1px solid #dee2e6;
       border-radius: 10px;
@@ -536,6 +526,18 @@ import { CotacaoFreteResponse, OpcaoFrete } from '../../models/frete.model';
       border-color: var(--cor-primaria);
       background-color: rgba(251, 191, 36, 0.12);
       box-shadow: 0 2px 8px rgba(47, 106, 73, 0.12);
+    }
+
+    .frete-servico {
+      font-weight: 700;
+      color: var(--cor-escura);
+      line-height: 1.2;
+      margin-bottom: 2px;
+    }
+
+    .cep-spinner {
+      width: 0.8rem;
+      height: 0.8rem;
     }
   `]
 })
@@ -560,6 +562,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   qrCodePix: string = '';
   pedidoId: string = '';
   verificandoPagamento: any;
+  buscandoCep = false;
   tentativasVerificacao: number = 0;
   maxTentativas: number = 60; // 5 minutos (60 * 5s = 5min)
   parcelas: number = 1;
@@ -570,12 +573,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   opcaoSelecionada: OpcaoFrete | null = null;
   carregandoFrete = false;
   mensagemFrete = '';
+  private secureFieldsPrefix = 'checkout';
   dadosCartao = {
-    cardNumber: '',
     cardholderName: '',
-    expirationMonth: '',
-    expirationYear: '',
-    securityCode: '',
     cpf: ''
   };
 
@@ -594,6 +594,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     cidade: '',
     estado: ''
   };
+  private ultimoCepConsultado = '';
 
   constructor(
     private carrinhoService: CarrinhoService,
@@ -604,6 +605,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private parametroSistemaService: ParametroSistemaService,
     private pagamentoService: PagamentoService,
     private freteService: FreteService,
+    private cepService: CepService,
     private router: Router
   ) {}
 
@@ -652,6 +654,20 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.opcoesParcelamento = [1, 2, 3];
       }
     });
+  }
+
+  selecionarMetodoPagamento(metodo: string): void {
+    this.metodoPagamento = metodo;
+
+    if (metodo === 'credit_card') {
+      setTimeout(() => {
+        this.pagamentoService.inicializarCamposCartaoSeguro(this.secureFieldsPrefix)
+          .catch(error => console.error('Erro ao inicializar Secure Fields no checkout:', error));
+      });
+      return;
+    }
+
+    this.pagamentoService.destruirCamposCartaoSeguro(this.secureFieldsPrefix);
   }
 
   carregarParametroTipoEnderecoEntrega(): void {
@@ -867,11 +883,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private validarDadosCartao(): boolean {
     return !!(
-      this.dadosCartao.cardNumber &&
       this.dadosCartao.cardholderName &&
-      this.dadosCartao.expirationMonth &&
-      this.dadosCartao.expirationYear &&
-      this.dadosCartao.securityCode &&
       this.dadosCartao.cpf
     );
   }
@@ -900,9 +912,45 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   buscarCep(): void {
-    // Aqui você pode integrar com uma API de CEP
-    console.log('Buscar CEP:', this.dadosEntrega.cep);
-    this.atualizarCotacaoFrete();
+    const cepLimpo = (this.dadosEntrega.cep || '').replace(/\D/g, '');
+    if (cepLimpo.length !== 8) {
+      this.atualizarCotacaoFrete();
+      return;
+    }
+
+    if (cepLimpo === this.ultimoCepConsultado) {
+      this.atualizarCotacaoFrete();
+      return;
+    }
+
+    this.buscandoCep = true;
+    this.cepService.consultarCep(cepLimpo).subscribe({
+      next: (endereco) => {
+        this.ultimoCepConsultado = cepLimpo;
+        this.dadosEntrega.logradouro = endereco.street || this.dadosEntrega.logradouro;
+        this.dadosEntrega.bairro = endereco.neighborhood || this.dadosEntrega.bairro;
+        this.dadosEntrega.cidade = endereco.city || this.dadosEntrega.cidade;
+        this.dadosEntrega.estado = endereco.state || this.dadosEntrega.estado;
+        this.buscandoCep = false;
+        this.atualizarCotacaoFrete();
+      },
+      error: () => {
+        this.buscandoCep = false;
+        this.alertService.warning('CEP não encontrado', 'Não foi possível localizar esse CEP. Confira o número informado.');
+        this.atualizarCotacaoFrete();
+      }
+    });
+  }
+
+  aoDigitarCep(event: any): void {
+    const valor = event.target.value;
+    const formatado = this.formatarCep(valor);
+    this.dadosEntrega.cep = formatado;
+    event.target.value = formatado;
+    const cepLimpo = formatado.replace(/\D/g, '');
+    if (cepLimpo.length === 8) {
+      this.buscarCep();
+    }
   }
 
   verificarCpf(): void {
@@ -1066,7 +1114,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         // Se for cartão, criar token primeiro
         if (this.metodoPagamento === 'credit_card') {
           console.log('Criando token do cartão...');
-          const cardToken = await this.pagamentoService.criarTokenCartao(this.dadosCartao);
+          const cardToken = await this.pagamentoService.criarTokenCartaoSeguro(this.secureFieldsPrefix, this.dadosCartao);
           console.log('Token criado:', cardToken);
           pagamentoRequest.dadosCartao = {
             ...this.dadosCartao,
@@ -1152,10 +1200,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         if (erroPagamento?.error) {
           console.error('🔴 Resposta do servidor:', JSON.stringify(erroPagamento.error, null, 2));
         }
-        
+
+        const mensagemErroCartao =
+          erroPagamento?.message &&
+          !erroPagamento?.status &&
+          !erroPagamento?.error
+            ? erroPagamento.message
+            : null;
+
         this.alertService.warning(
-          'Pedido realizado', 
-          'Porém houve um problema com o pagamento. Tente novamente acessando "Meus Pedidos"'
+          'Pedido realizado',
+          mensagemErroCartao
+            ? `Porém houve um problema com o pagamento: ${mensagemErroCartao}`
+            : 'Porém houve um problema com o pagamento. Tente novamente acessando "Meus Pedidos"'
         ).then(() => {
           this.router.navigate(['/meus-pedidos']);
         });
@@ -1321,13 +1378,21 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   private podeReutilizarServicoSelecionado(cepDestino: string): boolean {
     return !!(
       this.opcaoSelecionada &&
-      this.opcaoSelecionada.provider === 'MelhorEnvio' &&
-      this.cotacaoFrete?.providerUtilizado === 'MelhorEnvio' &&
+      this.opcaoSelecionada.provider &&
+      this.opcaoSelecionada.provider !== 'Fixo' &&
+      this.cotacaoFrete?.providerUtilizado === this.opcaoSelecionada.provider &&
       this.cotacaoFrete?.cepDestino === cepDestino
     );
   }
 
   ngOnDestroy(): void {
+    this.pagamentoService.destruirCamposCartaoSeguro(this.secureFieldsPrefix);
     this.pararVerificacaoPagamento();
+  }
+
+  private formatarCep(valor: string): string {
+    if (!valor) return '';
+    const apenasNumeros = valor.replace(/\D/g, '').substring(0, 8);
+    return apenasNumeros.replace(/(\d{5})(\d{0,3})/, (_, p1, p2) => p2 ? `${p1}-${p2}` : p1);
   }
 }

@@ -41,8 +41,8 @@ export interface Pedido {
   transportadoraFrete?: string;
   servicoFrete?: string;
   codigoServicoFrete?: string;
-  melhorEnvioPedidoId?: string;
-  melhorEnvioProtocolo?: string;
+  integracaoFretePedidoId?: string;
+  integracaoFreteProtocolo?: string;
   codigoRastreio?: string;
   urlRastreio?: string;
   urlEtiqueta?: string;

@@ -18,7 +18,7 @@ namespace LojaVirtual.Aplicacao.Services
 	public class FreteService : IFreteService
 	{
 		private const string ProviderFixo = "Fixo";
-		private const string ProviderMelhorEnvio = "MelhorEnvio";
+		private const string ProviderFrenet = "Frenet";
 		private readonly IUnitOfWork _unitOfWork;
 		private readonly IHttpClientFactory _httpClientFactory;
 		private readonly IConfiguration _configuration;
@@ -41,12 +41,12 @@ namespace LojaVirtual.Aplicacao.Services
 			var configuracao = await ObterConfiguracaoAsync();
 			var cepDestino = LimparCep(dto.CepDestino);
 
-			if (!configuracao.FreteHabilitado || !string.Equals(configuracao.Provider, ProviderMelhorEnvio, StringComparison.OrdinalIgnoreCase))
+			if (!configuracao.FreteHabilitado || string.Equals(configuracao.Provider, ProviderFixo, StringComparison.OrdinalIgnoreCase))
 			{
 				return await CriarRespostaFixaAsync(
 					dto,
 					configuracao,
-					!configuracao.FreteHabilitado ? "Frete dinâmico desabilitado. Usando valor fixo do produto." : null,
+					!configuracao.FreteHabilitado ? "Frete dinâmico desabilitado. Usando valor fixo do produto." : "Frete fixo configurado. Usando valor fixo do produto.",
 					cancellationToken);
 			}
 
@@ -59,110 +59,16 @@ namespace LojaVirtual.Aplicacao.Services
 					cancellationToken);
 			}
 
-			var accessToken = _configuration["MelhorEnvio:AccessToken"];
-			if (string.IsNullOrWhiteSpace(accessToken))
+			if (string.Equals(configuracao.Provider, ProviderFrenet, StringComparison.OrdinalIgnoreCase))
 			{
-				return await CriarRespostaFixaAsync(
-					dto,
-					configuracao,
-					"Token do Melhor Envio não configurado. Usando valor fixo do produto.",
-					cancellationToken);
+				return await CotarComFrenetAsync(dto, configuracao, cepDestino, cancellationToken);
 			}
 
-			try
-			{
-				var produtosCotacao = await MontarProdutosMelhorEnvioAsync(dto, cancellationToken);
-				if (produtosCotacao.Count == 0)
-				{
-					return await CriarRespostaFixaAsync(
-						dto,
-						configuracao,
-						"Carrinho sem produtos válidos para cotação. Usando valor fixo do produto.",
-						cancellationToken);
-				}
-
-				var payload = new Dictionary<string, object?>
-				{
-					["from"] = new Dictionary<string, object?> { ["postal_code"] = configuracao.CepOrigem },
-					["to"] = new Dictionary<string, object?> { ["postal_code"] = cepDestino },
-					["products"] = produtosCotacao
-				};
-
-				if (!string.IsNullOrWhiteSpace(dto.CodigoServico))
-				{
-					payload["services"] = dto.CodigoServico;
-				}
-
-				var client = _httpClientFactory.CreateClient();
-				var baseUrl = (_configuration["MelhorEnvio:BaseUrl"] ?? "https://sandbox.melhorenvio.com.br").TrimEnd('/');
-				var endpoint = $"{baseUrl}/api/v2/me/shipment/calculate";
-				var payloadJson = JsonSerializer.Serialize(payload);
-				_logger.LogInformation("Cotando frete no Melhor Envio. Endpoint: {Endpoint}. Payload: {Payload}", endpoint, payloadJson);
-				var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-				request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-				request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-				request.Headers.UserAgent.ParseAdd(_configuration["MelhorEnvio:UserAgent"] ?? "LojaVirtual ([email protected])");
-				request.Content = new StringContent(payloadJson, Encoding.UTF8, "application/json");
-
-				var response = await client.SendAsync(request, cancellationToken);
-				if (!response.IsSuccessStatusCode)
-				{
-					var respostaErro = await response.Content.ReadAsStringAsync(cancellationToken);
-					_logger.LogWarning("Falha ao cotar frete no Melhor Envio. Status: {StatusCode}. Resposta: {Resposta}", response.StatusCode, respostaErro);
-					return await CriarRespostaFixaAsync(
-						dto,
-						configuracao,
-						"Melhor Envio indisponível no momento. Usando valor fixo do produto.",
-						cancellationToken);
-				}
-
-				var respostaSucesso = await response.Content.ReadAsStringAsync(cancellationToken);
-				_logger.LogInformation("Resposta do Melhor Envio recebida: {Resposta}", respostaSucesso);
-				using var document = JsonDocument.Parse(respostaSucesso);
-				var opcoes = ParsearOpcoesMelhorEnvio(document.RootElement);
-				if (opcoes.Count == 0)
-				{
-					var detalhesErro = ExtrairDetalhesErroMelhorEnvio(document.RootElement);
-					if (!string.IsNullOrWhiteSpace(detalhesErro))
-					{
-						_logger.LogWarning("Melhor Envio retornou sem opções válidas. Detalhes: {Detalhes}", detalhesErro);
-					}
-
-					return await CriarRespostaFixaAsync(
-						dto,
-						configuracao,
-						string.IsNullOrWhiteSpace(detalhesErro)
-							? "Nenhuma opção de frete disponível no Melhor Envio. Usando valor fixo do produto."
-							: $"Melhor Envio sem opções válidas: {detalhesErro}. Usando valor fixo do produto.",
-						cancellationToken);
-				}
-
-				AplicarPrazoPreparacao(opcoes, configuracao.PrazoPreparacaoDias);
-
-				return new CotacaoFreteResponseDTO
-				{
-					FreteHabilitado = true,
-					ProviderConfigurado = configuracao.Provider,
-					ProviderUtilizado = ProviderMelhorEnvio,
-					CepOrigem = configuracao.CepOrigem,
-					CepDestino = cepDestino,
-					PrazoPreparacaoDias = configuracao.PrazoPreparacaoDias,
-					UsandoFallbackFixo = false,
-					Opcoes = opcoes
-						.OrderBy(o => o.Valor)
-						.ThenBy(o => o.PrazoEntregaDias)
-						.ToList()
-				};
-			}
-			catch (Exception ex)
-			{
-				_logger.LogWarning(ex, "Erro ao cotar frete no Melhor Envio. Aplicando fallback fixo.");
-				return await CriarRespostaFixaAsync(
-					dto,
-					configuracao,
-					"Erro ao consultar o Melhor Envio. Usando valor fixo do produto.",
-					cancellationToken);
-			}
+			return await CriarRespostaFixaAsync(
+				dto,
+				configuracao,
+				$"Provider de frete '{configuracao.Provider}' não suportado. Usando valor fixo do produto.",
+				cancellationToken);
 		}
 
 		public OpcaoFreteDTO SelecionarOpcao(CotacaoFreteResponseDTO cotacao, string? codigoServicoPreferido)
@@ -266,10 +172,117 @@ namespace LojaVirtual.Aplicacao.Services
 			};
 		}
 
-		private async Task<List<Dictionary<string, object?>>> MontarProdutosMelhorEnvioAsync(CotacaoFreteRequestDTO dto, CancellationToken cancellationToken)
+		private async Task<CotacaoFreteResponseDTO> CotarComFrenetAsync(
+			CotacaoFreteRequestDTO dto,
+			(bool FreteHabilitado, string Provider, string CepOrigem, int PrazoPreparacaoDias) configuracao,
+			string cepDestino,
+			CancellationToken cancellationToken)
+		{
+			var token = _configuration["Frenet:QuoteToken"];
+			if (string.IsNullOrWhiteSpace(token))
+			{
+				return await CriarRespostaFixaAsync(dto, configuracao, "QuoteToken da Frenet não configurado. Usando valor fixo do produto.", cancellationToken);
+			}
+
+			try
+			{
+				var (itens, valorDeclarado) = await MontarItensFrenetAsync(dto, cancellationToken);
+				if (itens.Count == 0)
+				{
+					return await CriarRespostaFixaAsync(dto, configuracao, "Carrinho sem produtos válidos para cotação. Usando valor fixo do produto.", cancellationToken);
+				}
+
+				var payload = new Dictionary<string, object?>
+				{
+					["SellerCEP"] = configuracao.CepOrigem,
+					["RecipientCEP"] = cepDestino,
+					["ShipmentInvoiceValue"] = decimal.Round(valorDeclarado, 2),
+					["ShippingItemArray"] = itens
+				};
+
+				if (!string.IsNullOrWhiteSpace(dto.CodigoServico))
+				{
+					payload["ShippingServiceCode"] = dto.CodigoServico;
+				}
+
+				var client = _httpClientFactory.CreateClient();
+				var baseUrl = (_configuration["Frenet:BaseUrl"] ?? "https://api.frenet.com.br").TrimEnd('/');
+				var endpoint = $"{baseUrl}/shipping/quote";
+				var payloadJson = JsonSerializer.Serialize(payload);
+				_logger.LogInformation("Cotando frete na Frenet. Endpoint: {Endpoint}. Payload: {Payload}", endpoint, payloadJson);
+
+				var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+				request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+				request.Headers.TryAddWithoutValidation("token", token);
+				request.Content = new StringContent(payloadJson, Encoding.UTF8, "application/json");
+
+				var response = await client.SendAsync(request, cancellationToken);
+				if (!response.IsSuccessStatusCode)
+				{
+					var respostaErro = await response.Content.ReadAsStringAsync(cancellationToken);
+					_logger.LogWarning("Falha ao cotar frete na Frenet. Status: {StatusCode}. Resposta: {Resposta}", response.StatusCode, respostaErro);
+					return await CriarRespostaFixaAsync(dto, configuracao, "Frenet indisponível no momento. Usando valor fixo do produto.", cancellationToken);
+				}
+
+				var respostaSucesso = await response.Content.ReadAsStringAsync(cancellationToken);
+				_logger.LogInformation("Resposta da Frenet recebida: {Resposta}", respostaSucesso);
+				using var document = JsonDocument.Parse(respostaSucesso);
+				var opcoes = ParsearOpcoesFrenet(document.RootElement);
+				if (opcoes.Count == 0)
+				{
+					var detalhesErro = ExtrairDetalhesErroFrenet(document.RootElement);
+					if (!string.IsNullOrWhiteSpace(detalhesErro))
+					{
+						_logger.LogWarning("Frenet retornou sem opções válidas. Detalhes: {Detalhes}", detalhesErro);
+					}
+
+					return await CriarRespostaFixaAsync(
+						dto,
+						configuracao,
+						string.IsNullOrWhiteSpace(detalhesErro)
+							? "Nenhuma opção de frete disponível na Frenet. Usando valor fixo do produto."
+							: $"Frenet sem opções válidas: {detalhesErro}. Usando valor fixo do produto.",
+						cancellationToken);
+				}
+
+				return CriarRespostaDinamica(configuracao, cepDestino, ProviderFrenet, opcoes);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogWarning(ex, "Erro ao cotar frete na Frenet. Aplicando fallback fixo.");
+				return await CriarRespostaFixaAsync(dto, configuracao, "Erro ao consultar a Frenet. Usando valor fixo do produto.", cancellationToken);
+			}
+		}
+
+		private CotacaoFreteResponseDTO CriarRespostaDinamica(
+			(bool FreteHabilitado, string Provider, string CepOrigem, int PrazoPreparacaoDias) configuracao,
+			string cepDestino,
+			string providerUtilizado,
+			List<OpcaoFreteDTO> opcoes)
+		{
+			AplicarPrazoPreparacao(opcoes, configuracao.PrazoPreparacaoDias);
+
+			return new CotacaoFreteResponseDTO
+			{
+				FreteHabilitado = true,
+				ProviderConfigurado = configuracao.Provider,
+				ProviderUtilizado = providerUtilizado,
+				CepOrigem = configuracao.CepOrigem,
+				CepDestino = cepDestino,
+				PrazoPreparacaoDias = configuracao.PrazoPreparacaoDias,
+				UsandoFallbackFixo = false,
+				Opcoes = opcoes
+					.OrderBy(o => o.Valor)
+					.ThenBy(o => o.PrazoEntregaDias)
+					.ToList()
+			};
+		}
+
+		private async Task<(List<Dictionary<string, object?>> Itens, decimal ValorDeclarado)> MontarItensFrenetAsync(CotacaoFreteRequestDTO dto, CancellationToken cancellationToken)
 		{
 			_ = cancellationToken;
-			var produtos = new List<Dictionary<string, object?>>();
+			var itens = new List<Dictionary<string, object?>>();
+			decimal valorDeclarado = 0;
 
 			foreach (var item in dto.Itens)
 			{
@@ -282,63 +295,21 @@ namespace LojaVirtual.Aplicacao.Services
 				var tamanho = item.ProdutoTamanhoId.HasValue
 					? await _unitOfWork.ProdutoTamanhos.ObterPorIdAsync(item.ProdutoTamanhoId.Value)
 					: null;
+				valorDeclarado += (produto.PrecoPromocional ?? produto.Preco) * item.Quantidade;
 
-				var valorSeguro = produto.PrecoPromocional ?? produto.Preco;
-				produtos.Add(new Dictionary<string, object?>
+				itens.Add(new Dictionary<string, object?>
 				{
-					["id"] = produto.Id.ToString(),
-					["width"] = NormalizarDimensao(tamanho?.Largura),
-					["height"] = NormalizarDimensao(tamanho?.Altura),
-					["length"] = NormalizarDimensao(tamanho?.Profundidade),
-					["weight"] = tamanho != null && tamanho.Peso > 0 ? tamanho.Peso : 0.1,
-					["insurance_value"] = decimal.Round(valorSeguro, 2),
-					["quantity"] = item.Quantidade
+					["SKU"] = produto.Id.ToString(),
+					["Category"] = produto.CategoriaId.ToString(),
+					["Weight"] = tamanho != null && tamanho.Peso > 0 ? tamanho.Peso : 0.1,
+					["Length"] = NormalizarDimensao(tamanho?.Profundidade),
+					["Height"] = NormalizarDimensao(tamanho?.Altura),
+					["Width"] = NormalizarDimensao(tamanho?.Largura),
+					["Quantity"] = item.Quantidade
 				});
 			}
 
-			return produtos;
-		}
-
-		private static List<OpcaoFreteDTO> ParsearOpcoesMelhorEnvio(JsonElement root)
-		{
-			var opcoes = new List<OpcaoFreteDTO>();
-			if (root.ValueKind != JsonValueKind.Array)
-			{
-				return opcoes;
-			}
-
-			foreach (var element in root.EnumerateArray())
-			{
-				if (element.TryGetProperty("error", out var errorElement) &&
-					errorElement.ValueKind != JsonValueKind.Null &&
-					!string.IsNullOrWhiteSpace(errorElement.ToString()))
-				{
-					continue;
-				}
-
-				var valor = ObterDecimal(element, "custom_price") ?? ObterDecimal(element, "price");
-				if (!valor.HasValue)
-				{
-					continue;
-				}
-
-				var prazoEnvio = ObterInt(element, "custom_delivery_time") ?? ObterInt(element, "delivery_time") ?? 0;
-				var transportadora = element.TryGetProperty("company", out var companyElement)
-					? ObterString(companyElement, "name")
-					: null;
-
-				opcoes.Add(new OpcaoFreteDTO
-				{
-					Provider = ProviderMelhorEnvio,
-					CodigoServico = ObterString(element, "id") ?? ObterString(element, "service"),
-					NomeServico = ObterString(element, "name") ?? "Frete Melhor Envio",
-					NomeTransportadora = transportadora,
-					Valor = valor.Value,
-					PrazoEnvioDias = prazoEnvio
-				});
-			}
-
-			return opcoes;
+			return (itens, valorDeclarado);
 		}
 
 		private static void AplicarPrazoPreparacao(List<OpcaoFreteDTO> opcoes, int prazoPreparacaoDias)
@@ -350,51 +321,98 @@ namespace LojaVirtual.Aplicacao.Services
 			}
 		}
 
-		private static string? ExtrairDetalhesErroMelhorEnvio(JsonElement root)
+		private static List<OpcaoFreteDTO> ParsearOpcoesFrenet(JsonElement root)
 		{
-			if (root.ValueKind != JsonValueKind.Array)
+			var opcoes = new List<OpcaoFreteDTO>();
+			var servicos = ExtrairArray(root, "ShippingSevicesArray", "ShippingServicesArray", "Services", "ShippingServices");
+			if (servicos == null)
 			{
-				return null;
+				return opcoes;
 			}
 
-			var erros = new List<string>();
-
-			foreach (var element in root.EnumerateArray())
+			foreach (var element in servicos.Value.EnumerateArray())
 			{
-				var nomeServico = ObterString(element, "name") ?? "Serviço";
-				var transportadora = element.TryGetProperty("company", out var companyElement)
-					? ObterString(companyElement, "name")
-					: null;
-				var erro = ObterErro(element);
-
-				if (string.IsNullOrWhiteSpace(erro))
+				if (TemErroFrenet(element))
 				{
 					continue;
 				}
 
-				var prefixo = string.IsNullOrWhiteSpace(transportadora)
-					? nomeServico
-					: $"{transportadora} / {nomeServico}";
+				var valor = ObterDecimalFlexivel(element, "ShippingPrice", "Price", "ServiceValue");
+				if (!valor.HasValue)
+				{
+					continue;
+				}
 
-				erros.Add($"{prefixo}: {erro}");
+				var prazoEnvio = ObterIntFlexivel(element, "DeliveryTime", "DeliveryDays", "ShippingDeliveryTime") ?? 0;
+
+				opcoes.Add(new OpcaoFreteDTO
+				{
+					Provider = ProviderFrenet,
+					CodigoServico = ObterStringFlexivel(element, "ServiceCode", "ShippingServiceCode"),
+					NomeServico = ObterStringFlexivel(element, "ServiceDescription", "ServiceName", "Description") ?? "Frete Frenet",
+					NomeTransportadora = ObterStringFlexivel(element, "Carrier", "CarrierName"),
+					Valor = valor.Value,
+					PrazoEnvioDias = prazoEnvio
+				});
+			}
+
+			return opcoes;
+		}
+
+		private static string? ExtrairDetalhesErroFrenet(JsonElement root)
+		{
+			var erros = new List<string>();
+			var servicos = ExtrairArray(root, "ShippingSevicesArray", "ShippingServicesArray", "Services", "ShippingServices");
+
+			if (servicos.HasValue)
+			{
+				foreach (var element in servicos.Value.EnumerateArray())
+				{
+					if (!TemErroFrenet(element))
+					{
+						continue;
+					}
+
+					var erro = ObterStringFlexivel(element, "Msg", "ErrorMessage", "Message", "Error");
+					if (string.IsNullOrWhiteSpace(erro))
+					{
+						erro = "Serviço indisponível";
+					}
+
+					var nomeServico = ObterStringFlexivel(element, "ServiceDescription", "ServiceName", "Description") ?? "Serviço";
+					var transportadora = ObterStringFlexivel(element, "Carrier", "CarrierName");
+					var prefixo = string.IsNullOrWhiteSpace(transportadora) ? nomeServico : $"{transportadora} / {nomeServico}";
+					erros.Add($"{prefixo}: {erro}");
+				}
+			}
+
+			if (erros.Count == 0)
+			{
+				var mensagem = ObterStringFlexivel(root, "Message", "Error", "ErrorMessage");
+				if (!string.IsNullOrWhiteSpace(mensagem))
+				{
+					erros.Add(mensagem);
+				}
 			}
 
 			return erros.Count == 0 ? null : string.Join(" | ", erros);
 		}
 
-		private static string? ObterErro(JsonElement element)
+		private static bool TemErroFrenet(JsonElement element)
 		{
-			if (!element.TryGetProperty("error", out var errorElement) || errorElement.ValueKind == JsonValueKind.Null)
+			if (!element.TryGetProperty("Error", out var errorElement))
 			{
-				return null;
+				return false;
 			}
 
 			return errorElement.ValueKind switch
 			{
-				JsonValueKind.String => errorElement.GetString(),
-				JsonValueKind.Object => string.Join("; ", errorElement.EnumerateObject().Select(p => $"{p.Name}: {p.Value}")),
-				JsonValueKind.Array => string.Join("; ", errorElement.EnumerateArray().Select(item => item.ToString())),
-				_ => errorElement.ToString()
+				JsonValueKind.True => true,
+				JsonValueKind.False => false,
+				JsonValueKind.String when bool.TryParse(errorElement.GetString(), out var boolValue) => boolValue,
+				JsonValueKind.Number when errorElement.TryGetInt32(out var numberValue) => numberValue != 0,
+				_ => !string.IsNullOrWhiteSpace(errorElement.ToString()) &&
+				     !string.Equals(errorElement.ToString(), "false", StringComparison.OrdinalIgnoreCase)
 			};
 		}
 
@@ -436,6 +454,61 @@ namespace LojaVirtual.Aplicacao.Services
 			}
 
 			return property.ValueKind == JsonValueKind.String ? property.GetString() : property.ToString();
+		}
+
+		private static JsonElement? ExtrairArray(JsonElement element, params string[] propertyNames)
+		{
+			foreach (var propertyName in propertyNames)
+			{
+				if (element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.Array)
+				{
+					return property;
+				}
+			}
+
+			return null;
+		}
+
+		private static decimal? ObterDecimalFlexivel(JsonElement element, params string[] propertyNames)
+		{
+			foreach (var propertyName in propertyNames)
+			{
+				var valor = ObterDecimal(element, propertyName);
+				if (valor.HasValue)
+				{
+					return valor;
+				}
+			}
+
+			return null;
+		}
+
+		private static int? ObterIntFlexivel(JsonElement element, params string[] propertyNames)
+		{
+			foreach (var propertyName in propertyNames)
+			{
+				var valor = ObterInt(element, propertyName);
+				if (valor.HasValue)
+				{
+					return valor;
+				}
+			}
+
+			return null;
+		}
+
+		private static string? ObterStringFlexivel(JsonElement element, params string[] propertyNames)
+		{
+			foreach (var propertyName in propertyNames)
+			{
+				var valor = ObterString(element, propertyName);
+				if (!string.IsNullOrWhiteSpace(valor))
+				{
+					return valor;
+				}
+			}
+
+			return null;
 		}
 
 		private static double NormalizarDimensao(double? valor)

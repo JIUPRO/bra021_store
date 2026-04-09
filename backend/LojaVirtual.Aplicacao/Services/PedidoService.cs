@@ -85,12 +85,13 @@ namespace LojaVirtual.Aplicacao.Services
 				var cotacaoFrete = await _freteService.CotarAsync(new CotacaoFreteRequestDTO
 				{
 					CepDestino = dto.CepEntrega,
-					CodigoServico = string.Equals(dto.ProviderFrete, "MelhorEnvio", StringComparison.OrdinalIgnoreCase)
+					CodigoServico = EhProviderDinamico(dto.ProviderFrete)
 						? dto.CodigoServicoFrete
 						: null,
 					Itens = dto.Itens.Select(item => new CotacaoFreteItemDTO
 					{
 						ProdutoId = item.ProdutoId,
+						ProdutoTamanhoId = item.ProdutoTamanhoId,
 						Quantidade = item.Quantidade
 					}).ToList()
 				});
@@ -332,16 +333,17 @@ namespace LojaVirtual.Aplicacao.Services
 
 		private OpcaoFreteDTO ObterOpcaoFreteFinal(CriarPedidoDTO dto, CotacaoFreteResponseDTO cotacaoFrete)
 		{
-			var providerMelhorEnvioSelecionado = string.Equals(dto.ProviderFrete, "MelhorEnvio", StringComparison.OrdinalIgnoreCase);
-			var cotacaoDinamicaDisponivel = string.Equals(cotacaoFrete.ProviderUtilizado, "MelhorEnvio", StringComparison.OrdinalIgnoreCase) &&
+			var providerDinamicoSelecionado = EhProviderDinamico(dto.ProviderFrete);
+			var cotacaoDinamicaDisponivel = EhProviderDinamico(cotacaoFrete.ProviderUtilizado) &&
+				string.Equals(cotacaoFrete.ProviderUtilizado, dto.ProviderFrete, StringComparison.OrdinalIgnoreCase) &&
 				!cotacaoFrete.UsandoFallbackFixo;
 
-			if (providerMelhorEnvioSelecionado && cotacaoDinamicaDisponivel)
+			if (providerDinamicoSelecionado && cotacaoDinamicaDisponivel)
 			{
 				return _freteService.SelecionarOpcao(cotacaoFrete, dto.CodigoServicoFrete);
 			}
 
-			if (providerMelhorEnvioSelecionado && dto.ValorFrete > 0 && dto.PrazoEntregaDias > 0)
+			if (providerDinamicoSelecionado && dto.ValorFrete > 0 && dto.PrazoEntregaDias > 0)
 			{
 				_logger.LogWarning(
 					"Pedido usando cotação escolhida no checkout como fallback. Pedido cliente {ClienteId}, serviço {CodigoServicoFrete}, valor {ValorFrete}, prazo {PrazoEntregaDias}. Mensagem cotação: {Mensagem}",
@@ -353,9 +355,9 @@ namespace LojaVirtual.Aplicacao.Services
 
 				return new OpcaoFreteDTO
 				{
-					Provider = "MelhorEnvio",
+					Provider = dto.ProviderFrete ?? "Dinamico",
 					CodigoServico = dto.CodigoServicoFrete,
-					NomeServico = dto.NomeServicoFrete ?? "Frete Melhor Envio",
+					NomeServico = dto.NomeServicoFrete ?? "Frete dinâmico",
 					NomeTransportadora = dto.TransportadoraFrete,
 					Valor = dto.ValorFrete,
 					PrazoPreparacaoDias = dto.PrazoPreparacaoDias,
@@ -365,6 +367,12 @@ namespace LojaVirtual.Aplicacao.Services
 			}
 
 			return _freteService.SelecionarOpcao(cotacaoFrete, dto.CodigoServicoFrete);
+		}
+
+		private static bool EhProviderDinamico(string? provider)
+		{
+			return !string.IsNullOrWhiteSpace(provider) &&
+				!string.Equals(provider, "Fixo", StringComparison.OrdinalIgnoreCase);
 		}
 	}
 }

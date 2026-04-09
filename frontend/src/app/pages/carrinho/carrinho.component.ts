@@ -98,11 +98,11 @@ import { ItemCarrinho } from '../../models/produto.model';
                 <span>Subtotal ({{ quantidadeItens }} itens)</span>
                 <span>R$ {{ subtotal | number:'1.2-2' }}</span>
               </div>
-              <div class="d-flex justify-content-between mb-2" *ngIf="!usarFreteMelhorEnvio">
+              <div class="d-flex justify-content-between mb-2" *ngIf="!usarFreteDinamico">
                 <span>Frete</span>
                 <span class="text-muted">R$ {{ calcularFrete() | number:'1.2-2' }}</span>
               </div>
-              <div class="d-flex justify-content-between mb-2" *ngIf="!usarFreteMelhorEnvio">
+              <div class="d-flex justify-content-between mb-2" *ngIf="!usarFreteDinamico">
                 <span>Prazo de entrega</span>
                 <span class="text-muted">{{ calcularPrazoEntrega() }} dias</span>
               </div>
@@ -112,9 +112,9 @@ import { ItemCarrinho } from '../../models/produto.model';
               </div>
               <hr>
               <div class="d-flex justify-content-between mb-4">
-                <span class="fw-bold fs-5">{{ usarFreteMelhorEnvio ? 'Total dos produtos' : 'Total' }}</span>
+                <span class="fw-bold fs-5">{{ usarFreteDinamico ? 'Total dos produtos' : 'Total' }}</span>
                 <span class="fw-bold fs-5 text-primary">
-                  R$ {{ (usarFreteMelhorEnvio ? subtotal : (subtotal + calcularFrete())) | number:'1.2-2' }}
+                  R$ {{ (usarFreteDinamico ? subtotal : (subtotal + calcularFrete())) | number:'1.2-2' }}
                 </span>
               </div>
               <button class="btn btn-primario w-100 btn-lg" (click)="finalizarCompra()">
@@ -126,10 +126,10 @@ import { ItemCarrinho } from '../../models/produto.model';
           <div class="card mt-3">
             <div class="card-body">
               <h6 class="fw-bold mb-3"><i class="bi bi-truck me-2"></i>Frete e Entrega</h6>
-              <p class="text-muted small mb-0" *ngIf="!usarFreteMelhorEnvio; else mensagemMelhorEnvio">
+              <p class="text-muted small mb-0" *ngIf="!usarFreteDinamico; else mensagemFreteDinamico">
                 O frete e o prazo exibidos consideram o maior valor entre os itens do carrinho.
               </p>
-              <ng-template #mensagemMelhorEnvio>
+              <ng-template #mensagemFreteDinamico>
                 <p class="text-muted small mb-0">
                   O frete e o prazo serão calculados no fechamento do pedido, após informar o CEP de entrega.
                 </p>
@@ -178,8 +178,8 @@ export class CarrinhoComponent implements OnInit {
     this.carregarConfiguracaoFrete();
   }
 
-  get usarFreteMelhorEnvio(): boolean {
-    return this.freteHabilitado && this.freteProvider === 'MelhorEnvio';
+  get usarFreteDinamico(): boolean {
+    return this.freteHabilitado && this.freteProvider !== 'Fixo';
   }
 
   get quantidadeItens(): number {

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using LojaVirtual.Aplicacao.DTOs;
@@ -15,7 +14,7 @@ namespace LojaVirtual.Aplicacao.Services
 	{
 		Task<GerarEtiquetaResponseDTO> GerarEtiquetaAsync(Guid pedidoId, CancellationToken cancellationToken = default);
 		Task<SincronizarRastreioResponseDTO> SincronizarRastreioAsync(Guid pedidoId, CancellationToken cancellationToken = default);
-		Task ProcessarWebhookAsync(string rawBody, string? signature, CancellationToken cancellationToken = default);
+		Task ProcessarWebhookFrenetAsync(string rawBody, IReadOnlyDictionary<string, string?> headers, CancellationToken cancellationToken = default);
 	}
 
 	public class LogisticaService : ILogisticaService
@@ -42,79 +41,87 @@ namespace LojaVirtual.Aplicacao.Services
 
 		public async Task<GerarEtiquetaResponseDTO> GerarEtiquetaAsync(Guid pedidoId, CancellationToken cancellationToken = default)
 		{
+			var provider = await ObterProviderLogisticoAtualAsync();
+			await ValidarProviderLogisticoAtualAsync(provider);
+			return await GerarEtiquetaFrenetAsync(pedidoId, cancellationToken);
+		}
+
+		public async Task<SincronizarRastreioResponseDTO> SincronizarRastreioAsync(Guid pedidoId, CancellationToken cancellationToken = default)
+		{
+			var provider = await ObterProviderLogisticoAtualAsync();
+			await ValidarProviderLogisticoAtualAsync(provider);
+			return await SincronizarRastreioFrenetAsync(pedidoId, cancellationToken);
+		}
+
+		private async Task<GerarEtiquetaResponseDTO> GerarEtiquetaFrenetAsync(Guid pedidoId, CancellationToken cancellationToken)
+		{
 			var pedido = await ObterPedidoLogisticoAsync(pedidoId);
 			ValidarPedidoParaEtiqueta(pedido);
 
-			var remetente = await ObterRemetenteAsync();
-			var accessToken = ObterAccessToken();
-			var baseUrl = ObterBaseUrl();
-			var client = CriarClient(accessToken);
+			var token = ObterTokenFrenet();
+			var partnerToken = ObterPartnerTokenFrenet();
+			var baseUrl = ObterBaseUrlFrenetWhitelabel();
+			var client = CriarClientFrenet(token, partnerToken);
 
-			if (string.IsNullOrWhiteSpace(pedido.MelhorEnvioPedidoId))
+			var payload = MontarPayloadFrenetOneclick(pedido);
+			var resposta = await EnviarFrenetAsync(client, HttpMethod.Post, $"{baseUrl}/v1/shipments/oneclick", payload, cancellationToken);
+
+			pedido.IntegracaoFreteProtocolo ??= pedido.NumeroPedido;
+			pedido.IntegracaoFretePedidoId = ExtrairStringFrenet(resposta, "ShipmentId", "shipmentId", "Id", "id")
+				?? pedido.IntegracaoFretePedidoId;
+			pedido.UrlEtiqueta = ExtrairStringFrenet(resposta, "LabelUrl", "labelUrl", "Url", "url", "PdfUrl", "pdfUrl")
+				?? pedido.UrlEtiqueta;
+			pedido.UrlRastreio = ExtrairStringFrenet(resposta, "TrackingUrl", "trackingUrl")
+				?? pedido.UrlRastreio;
+			pedido.CodigoRastreio = ExtrairStringFrenet(resposta, "TrackingNumber", "trackingNumber")
+				?? pedido.CodigoRastreio;
+			pedido.StatusLogistico = ExtrairStringFrenet(resposta, "ShipmentStatusDescription", "StatusDescription", "Status", "status")
+				?? "generated";
+			pedido.DataEtiquetaGerada ??= DateTime.UtcNow;
+
+			if (!string.IsNullOrWhiteSpace(pedido.IntegracaoFretePedidoId))
 			{
-				var payloadCarrinho = MontarPayloadCarrinho(pedido, remetente);
-				var respostaCarrinho = await EnviarAsync(client, HttpMethod.Post, $"{baseUrl}/api/v2/me/cart", payloadCarrinho, cancellationToken);
-				pedido.MelhorEnvioPedidoId = ObterString(respostaCarrinho, "id");
-				pedido.MelhorEnvioProtocolo = ObterString(respostaCarrinho, "protocol");
+				await TentarAtualizarEtiquetaFrenetAsync(client, baseUrl, pedido, cancellationToken);
+				await AtualizarDadosPesquisaFrenetAsync(client, baseUrl, pedido, cancellationToken);
 			}
 
-			if (string.IsNullOrWhiteSpace(pedido.MelhorEnvioPedidoId))
-			{
-				throw new InvalidOperationException("O Melhor Envio não retornou o identificador da etiqueta.");
-			}
-
-			var payloadPedido = new Dictionary<string, object?> { ["orders"] = new[] { pedido.MelhorEnvioPedidoId } };
-			var etiquetaJaGerada = PedidoJaTemEtiquetaGerada(pedido);
-
-			if (!etiquetaJaGerada)
-			{
-				await EnviarAsync(client, HttpMethod.Post, $"{baseUrl}/api/v2/me/shipment/checkout", payloadPedido, cancellationToken);
-				await EnviarAsync(client, HttpMethod.Post, $"{baseUrl}/api/v2/me/shipment/generate", payloadPedido, cancellationToken);
-
-				pedido.DataEtiquetaGerada = DateTime.UtcNow;
-				pedido.StatusLogistico = "generated";
-			}
-
-			await TentarAtualizarUrlEtiquetaAsync(client, baseUrl, pedido, payloadPedido, cancellationToken);
-
-			await AtualizarDadosDePesquisaAsync(client, baseUrl, pedido, cancellationToken);
 			await SalvarPedidoLogisticoAsync(pedido);
 
 			return new GerarEtiquetaResponseDTO
 			{
 				PedidoId = pedido.Id.ToString(),
-				MelhorEnvioPedidoId = pedido.MelhorEnvioPedidoId,
-				MelhorEnvioProtocolo = pedido.MelhorEnvioProtocolo,
+				IntegracaoFretePedidoId = pedido.IntegracaoFretePedidoId,
+				IntegracaoFreteProtocolo = pedido.IntegracaoFreteProtocolo,
 				CodigoRastreio = pedido.CodigoRastreio,
 				UrlRastreio = pedido.UrlRastreio,
 				UrlEtiqueta = pedido.UrlEtiqueta,
 				StatusLogistico = pedido.StatusLogistico,
 				DataEtiquetaGerada = pedido.DataEtiquetaGerada,
-				Mensagem = etiquetaJaGerada
-					? "Etiqueta já gerada anteriormente."
-					: "Etiqueta gerada com sucesso."
+				Mensagem = "Solicitação de etiqueta enviada para a Frenet."
 			};
 		}
 
-		public async Task<SincronizarRastreioResponseDTO> SincronizarRastreioAsync(Guid pedidoId, CancellationToken cancellationToken = default)
+		private async Task<SincronizarRastreioResponseDTO> SincronizarRastreioFrenetAsync(Guid pedidoId, CancellationToken cancellationToken)
 		{
 			var pedido = await ObterPedidoLogisticoAsync(pedidoId);
-			if (string.IsNullOrWhiteSpace(pedido.MelhorEnvioPedidoId))
+			if (string.IsNullOrWhiteSpace(pedido.IntegracaoFretePedidoId))
 			{
-				throw new InvalidOperationException("O pedido ainda não possui etiqueta gerada no Melhor Envio.");
+				throw new InvalidOperationException("O pedido ainda não possui envio gerado na Frenet.");
 			}
 
-			var accessToken = ObterAccessToken();
-			var baseUrl = ObterBaseUrl();
-			var client = CriarClient(accessToken);
+			var token = ObterTokenFrenet();
+			var partnerToken = ObterPartnerTokenFrenet();
+			var baseUrl = ObterBaseUrlFrenetWhitelabel();
+			var client = CriarClientFrenet(token, partnerToken);
 
-			await AtualizarDadosDePesquisaAsync(client, baseUrl, pedido, cancellationToken);
+			await AtualizarDadosPesquisaFrenetAsync(client, baseUrl, pedido, cancellationToken);
+			await TentarAtualizarEtiquetaFrenetAsync(client, baseUrl, pedido, cancellationToken);
 			await SalvarPedidoLogisticoAsync(pedido);
 
 			return new SincronizarRastreioResponseDTO
 			{
 				PedidoId = pedido.Id.ToString(),
-				MelhorEnvioPedidoId = pedido.MelhorEnvioPedidoId,
+				IntegracaoFretePedidoId = pedido.IntegracaoFretePedidoId,
 				CodigoRastreio = pedido.CodigoRastreio,
 				UrlRastreio = pedido.UrlRastreio,
 				StatusLogistico = pedido.StatusLogistico,
@@ -124,24 +131,64 @@ namespace LojaVirtual.Aplicacao.Services
 			};
 		}
 
-		public async Task ProcessarWebhookAsync(string rawBody, string? signature, CancellationToken cancellationToken = default)
+		public async Task ProcessarWebhookFrenetAsync(string rawBody, IReadOnlyDictionary<string, string?> headers, CancellationToken cancellationToken = default)
 		{
 			_ = cancellationToken;
-			ValidarAssinatura(rawBody, signature);
+			ValidarTokenWebhookFrenet(headers);
 
-			var payload = JsonSerializer.Deserialize<MelhorEnvioWebhookDTO>(rawBody, new JsonSerializerOptions
+			var payload = JsonSerializer.Deserialize<FrenetTrackingWebhookDTO>(rawBody, new JsonSerializerOptions
 			{
 				PropertyNameCaseInsensitive = true
-			}) ?? throw new InvalidOperationException("Payload de webhook inválido.");
+			}) ?? throw new InvalidOperationException("Payload de webhook Frenet inválido.");
 
-			var pedido = await ObterPedidoPorEtiquetaAsync(payload.Data.Id, payload.Data.Protocol);
+			if (string.IsNullOrWhiteSpace(payload.OrderId))
+			{
+				throw new InvalidOperationException("Webhook Frenet sem OrderId.");
+			}
+
+			var pedido = await ObterPedidoPorOrderIdFrenetAsync(payload.OrderId);
 			if (pedido == null)
 			{
-				_logger.LogWarning("Webhook Melhor Envio ignorado. Pedido não encontrado para etiqueta {EtiquetaId} e protocolo {Protocolo}.", payload.Data.Id, payload.Data.Protocol);
+				_logger.LogWarning("Webhook Frenet ignorado. Pedido não encontrado para OrderId {OrderId}.", payload.OrderId);
 				return;
 			}
 
-			AplicarDadosLogisticosNoPedido(pedido, payload.Data);
+			if (payload.ShipmentId.HasValue)
+			{
+				pedido.IntegracaoFretePedidoId = payload.ShipmentId.Value.ToString(CultureInfo.InvariantCulture);
+			}
+
+			pedido.UrlRastreio = payload.TrackingUrl ?? pedido.UrlRastreio;
+			pedido.CodigoRastreio = payload.TrackingNumber ?? pedido.CodigoRastreio;
+			pedido.ServicoFrete ??= payload.ServiceDescrition;
+
+			var ultimoEvento = payload.TrackingEvents
+				.OrderByDescending(e => ParseDataEventoFrenet(e.EventDateTime))
+				.FirstOrDefault();
+
+			if (ultimoEvento != null)
+			{
+				var dataEvento = ParseDataEventoFrenet(ultimoEvento.EventDateTime);
+				pedido.StatusLogistico = ultimoEvento.EventDescription ?? pedido.StatusLogistico;
+
+				switch (ultimoEvento.EventType)
+				{
+					case "0":
+					case "18":
+						pedido.DataPostagem ??= dataEvento;
+						if (pedido.Status < StatusPedido.Enviado)
+						{
+							pedido.Status = StatusPedido.Enviado;
+						}
+						break;
+					case "9":
+						pedido.DataEntrega ??= dataEvento;
+						pedido.Status = StatusPedido.Entregue;
+						break;
+				}
+			}
+
+			pedido.DataAtualizacao = DateTime.UtcNow;
 			await SalvarPedidoLogisticoAsync(pedido);
 		}
 
@@ -162,34 +209,36 @@ namespace LojaVirtual.Aplicacao.Services
 			return pedido;
 		}
 
-		private async Task<Pedido?> ObterPedidoPorEtiquetaAsync(string? etiquetaId, string? protocolo)
+		private async Task<Pedido?> ObterPedidoPorOrderIdFrenetAsync(string orderId)
 		{
-			if (!string.IsNullOrWhiteSpace(etiquetaId))
+			var normalizado = orderId.Trim();
+			var pedidos = await _unitOfWork.Pedidos.ObterPorFiltroAsync(p =>
+				p.NumeroPedido == normalizado ||
+				p.Id.ToString() == normalizado);
+
+			return pedidos.FirstOrDefault();
+		}
+
+		private async Task<string?> ObterProviderLogisticoAtualAsync()
+		{
+			return (await _unitOfWork.ParametrosSistema.ObterPorChaveAsync("FreteProvider"))?.Valor?.Trim();
+		}
+
+		private Task ValidarProviderLogisticoAtualAsync(string? provider)
+		{
+			if (string.Equals(provider, "Frenet", StringComparison.OrdinalIgnoreCase))
 			{
-				var porEtiqueta = (await _unitOfWork.Pedidos.ObterPorFiltroAsync(p =>
-					p.MelhorEnvioPedidoId == etiquetaId)).FirstOrDefault();
-				if (porEtiqueta != null)
-				{
-					return porEtiqueta;
-				}
+				return Task.CompletedTask;
 			}
 
-			if (!string.IsNullOrWhiteSpace(protocolo))
-			{
-				return (await _unitOfWork.Pedidos.ObterPorFiltroAsync(p =>
-					p.MelhorEnvioProtocolo == protocolo)).FirstOrDefault();
-			}
-
-			return null;
+			throw new InvalidOperationException("A logística automática do backoffice está disponível apenas para o provider Frenet.");
 		}
 
 		private void ValidarPedidoParaEtiqueta(Pedido pedido)
 		{
-			if (!string.Equals(pedido.TransportadoraFrete, "Correios", StringComparison.OrdinalIgnoreCase) &&
-				!string.Equals(pedido.ServicoFrete, "Frete Melhor Envio", StringComparison.OrdinalIgnoreCase) &&
-				string.IsNullOrWhiteSpace(pedido.CodigoServicoFrete))
+			if (string.IsNullOrWhiteSpace(pedido.CodigoServicoFrete))
 			{
-				throw new InvalidOperationException("O pedido não possui um serviço do Melhor Envio vinculado.");
+				throw new InvalidOperationException("O pedido não possui um serviço de frete integrado vinculado.");
 			}
 
 			if (string.IsNullOrWhiteSpace(pedido.CepEntrega) ||
@@ -208,403 +257,288 @@ namespace LojaVirtual.Aplicacao.Services
 			}
 		}
 
-		private async Task<RemetenteMelhorEnvio> ObterRemetenteAsync()
+		private string ObterTokenFrenet()
 		{
-			var parametros = (await _unitOfWork.ParametrosSistema.ObterTodosAsync())
-				.ToDictionary(p => p.Chave, p => p.Valor, StringComparer.OrdinalIgnoreCase);
+			return _configuration["Frenet:HomologacaoToken"]
+				?? throw new InvalidOperationException("Frenet:HomologacaoToken não configurado.");
+		}
 
-			string Valor(string chave) => parametros.TryGetValue(chave, out var valor) ? valor?.Trim() ?? string.Empty : string.Empty;
+		private string ObterPartnerTokenFrenet()
+		{
+			return _configuration["Frenet:HomologacaoPartnerToken"]
+				?? throw new InvalidOperationException("Frenet:HomologacaoPartnerToken não configurado.");
+		}
 
-			var remetente = new RemetenteMelhorEnvio
+		private string ObterBaseUrlFrenetWhitelabel()
+		{
+			var valor = _configuration["Frenet:WhitelabelBaseUrl"];
+			if (!string.IsNullOrWhiteSpace(valor))
 			{
-				Nome = Valor("MelhorEnvioRemetenteNome"),
-				Telefone = LimparNumero(Valor("MelhorEnvioRemetenteTelefone")),
-				Email = Valor("MelhorEnvioRemetenteEmail"),
-				Documento = LimparNumero(Valor("MelhorEnvioRemetenteDocumento")),
-				InscricaoEstadual = Valor("MelhorEnvioRemetenteInscricaoEstadual"),
-				Logradouro = Valor("MelhorEnvioRemetenteLogradouro"),
-				Numero = Valor("MelhorEnvioRemetenteNumero"),
-				Complemento = Valor("MelhorEnvioRemetenteComplemento"),
-				Bairro = Valor("MelhorEnvioRemetenteBairro"),
-				Cidade = Valor("MelhorEnvioRemetenteCidade"),
-				Estado = Valor("MelhorEnvioRemetenteEstado"),
-				Cep = LimparNumero(Valor("FreteCepOrigem")),
-				NaoComercial = bool.TryParse(Valor("MelhorEnvioNaoComercial"), out var naoComercial) && naoComercial
-			};
-
-			if (string.IsNullOrWhiteSpace(remetente.Nome) ||
-				string.IsNullOrWhiteSpace(remetente.Telefone) ||
-				string.IsNullOrWhiteSpace(remetente.Email) ||
-				string.IsNullOrWhiteSpace(remetente.Documento) ||
-				string.IsNullOrWhiteSpace(remetente.Logradouro) ||
-				string.IsNullOrWhiteSpace(remetente.Numero) ||
-				string.IsNullOrWhiteSpace(remetente.Bairro) ||
-				string.IsNullOrWhiteSpace(remetente.Cidade) ||
-				string.IsNullOrWhiteSpace(remetente.Estado) ||
-				string.IsNullOrWhiteSpace(remetente.Cep))
-			{
-				throw new InvalidOperationException("Parâmetros do remetente do Melhor Envio não estão completos no backoffice.");
+				return valor.TrimEnd('/');
 			}
 
-			return remetente;
+			return "https://whitelabel-hml.frenet.dev";
 		}
 
-		private string ObterAccessToken()
-		{
-			return _configuration["MelhorEnvio:AccessToken"]
-				?? throw new InvalidOperationException("MelhorEnvio:AccessToken não configurado.");
-		}
-
-		private string ObterBaseUrl()
-		{
-			return (_configuration["MelhorEnvio:BaseUrl"] ?? "https://sandbox.melhorenvio.com.br").TrimEnd('/');
-		}
-
-		private HttpClient CriarClient(string accessToken)
+		private HttpClient CriarClientFrenet(string token, string partnerToken)
 		{
 			var client = _httpClientFactory.CreateClient();
 			client.DefaultRequestHeaders.Accept.Clear();
 			client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
-			client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-			client.DefaultRequestHeaders.UserAgent.ParseAdd(_configuration["MelhorEnvio:UserAgent"] ?? "LojaVirtual ([email protected])");
+			client.DefaultRequestHeaders.TryAddWithoutValidation("token", token);
+			client.DefaultRequestHeaders.TryAddWithoutValidation("partner-token", partnerToken);
 			return client;
 		}
 
-		private Dictionary<string, object?> MontarPayloadCarrinho(Pedido pedido, RemetenteMelhorEnvio remetente)
-		{
-			var destinatarioNome = string.Equals(pedido.TipoEntrega, "Escola", StringComparison.OrdinalIgnoreCase)
-				? pedido.Escola?.Nome ?? pedido.NomeEntrega
-				: pedido.NomeEntrega;
-
-			var destinatarioTelefone = LimparNumero(pedido.TelefoneEntrega);
-			var destinatarioDocumento = LimparNumero(pedido.Cliente?.Cpf);
-
-			if (string.IsNullOrWhiteSpace(destinatarioTelefone) || string.IsNullOrWhiteSpace(destinatarioDocumento))
-			{
-				throw new InvalidOperationException("Cliente sem telefone ou CPF cadastrado para emissão da etiqueta.");
-			}
-
-			var produtos = pedido.Itens.Select(item => new Dictionary<string, object?>
-			{
-				["name"] = item.Produto?.Nome ?? "Produto",
-				["quantity"] = item.Quantidade,
-				["unitary_value"] = decimal.Round(item.PrecoUnitario, 2)
-			}).ToList();
-
-			var peso = pedido.Itens.Sum(item =>
-			{
-				var pesoUnitario = item.ProdutoTamanho != null && item.ProdutoTamanho.Peso > 0
-					? item.ProdutoTamanho.Peso
-					: 0.1d;
-				return (decimal)(pesoUnitario * item.Quantidade);
-			});
-			var altura = pedido.Itens.Max(item => NormalizarDimensao(item.ProdutoTamanho?.Altura));
-			var largura = pedido.Itens.Max(item => NormalizarDimensao(item.ProdutoTamanho?.Largura));
-			var comprimento = pedido.Itens.Sum(item => NormalizarDimensao(item.ProdutoTamanho?.Profundidade));
-
-			var from = new Dictionary<string, object?>
-			{
-				["name"] = remetente.Nome,
-				["phone"] = remetente.Telefone,
-				["email"] = remetente.Email,
-				["address"] = remetente.Logradouro,
-				["complement"] = remetente.Complemento,
-				["number"] = remetente.Numero,
-				["district"] = remetente.Bairro,
-				["city"] = remetente.Cidade,
-				["postal_code"] = remetente.Cep,
-				["state_abbr"] = remetente.Estado
-			};
-
-			if (remetente.Documento.Length == 14)
-			{
-				from["company_document"] = remetente.Documento;
-				from["state_register"] = string.IsNullOrWhiteSpace(remetente.InscricaoEstadual) ? "ISENTO" : remetente.InscricaoEstadual;
-			}
-			else
-			{
-				from["document"] = remetente.Documento;
-			}
-
-			return new Dictionary<string, object?>
-			{
-				["from"] = from,
-				["to"] = new Dictionary<string, object?>
-				{
-					["name"] = destinatarioNome,
-					["phone"] = destinatarioTelefone,
-					["email"] = pedido.Cliente?.Email ?? string.Empty,
-					["document"] = destinatarioDocumento,
-					["state_register"] = "ISENTO",
-					["address"] = pedido.LogradouroEntrega,
-					["complement"] = pedido.ComplementoEntrega,
-					["number"] = pedido.NumeroEntrega,
-					["district"] = pedido.BairroEntrega,
-					["city"] = pedido.CidadeEntrega,
-					["postal_code"] = LimparNumero(pedido.CepEntrega),
-					["state_abbr"] = pedido.EstadoEntrega
-				},
-				["products"] = produtos,
-				["volumes"] = new[]
-				{
-					new Dictionary<string, object?>
-					{
-						["height"] = altura,
-						["width"] = largura,
-						["length"] = Math.Max(comprimento, 1),
-						["weight"] = peso > 0 ? decimal.Round(peso, 2) : 0.1m
-					}
-				},
-				["options"] = new Dictionary<string, object?>
-				{
-					["receipt"] = false,
-					["own_hand"] = false,
-					["reverse"] = false,
-					["non_commercial"] = remetente.NaoComercial,
-					["insurance_value"] = decimal.Round(pedido.ValorSubtotal, 2)
-				},
-				["service"] = pedido.CodigoServicoFrete
-			};
-		}
-
-		private async Task<JsonElement> EnviarAsync(HttpClient client, HttpMethod method, string url, object? body, CancellationToken cancellationToken)
+		private async Task<JsonElement> EnviarFrenetAsync(HttpClient client, HttpMethod method, string url, object? body, CancellationToken cancellationToken)
 		{
 			var request = new HttpRequestMessage(method, url);
 			if (body != null)
 			{
 				var json = JsonSerializer.Serialize(body);
 				request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-				_logger.LogInformation("Melhor Envio request {Method} {Url}: {Body}", method, url, json);
+				_logger.LogInformation("Frenet request {Method} {Url}: {Body}", method, url, json);
 			}
 
 			var response = await client.SendAsync(request, cancellationToken);
 			var content = await response.Content.ReadAsStringAsync(cancellationToken);
-			_logger.LogInformation("Melhor Envio response {StatusCode} {Url}: {Body}", response.StatusCode, url, content);
+			_logger.LogInformation("Frenet response {StatusCode} {Url}: {Body}", response.StatusCode, url, content);
 
 			if (!response.IsSuccessStatusCode)
 			{
-				throw new InvalidOperationException($"Melhor Envio retornou {(int)response.StatusCode}: {content}");
+				throw new InvalidOperationException($"Frenet retornou {(int)response.StatusCode}: {content}");
 			}
 
 			using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(content) ? "{}" : content);
 			return document.RootElement.Clone();
 		}
 
-		private async Task AtualizarDadosDePesquisaAsync(HttpClient client, string baseUrl, Pedido pedido, CancellationToken cancellationToken)
+		private async Task AtualizarDadosPesquisaFrenetAsync(HttpClient client, string baseUrl, Pedido pedido, CancellationToken cancellationToken)
 		{
-			if (string.IsNullOrWhiteSpace(pedido.MelhorEnvioPedidoId))
+			if (string.IsNullOrWhiteSpace(pedido.IntegracaoFretePedidoId))
 			{
 				return;
 			}
 
-			var url = $"{baseUrl}/api/v2/me/orders/{Uri.EscapeDataString(pedido.MelhorEnvioPedidoId)}";
-			var response = await client.GetAsync(url, cancellationToken);
-			var content = await response.Content.ReadAsStringAsync(cancellationToken);
-			_logger.LogInformation("Melhor Envio pesquisa etiqueta {StatusCode}: {Body}", response.StatusCode, content);
+			var envio = await EnviarFrenetAsync(
+				client,
+				HttpMethod.Get,
+				$"{baseUrl}/v1/shipments/{Uri.EscapeDataString(pedido.IntegracaoFretePedidoId)}",
+				null,
+				cancellationToken);
 
-			if (!response.IsSuccessStatusCode || string.IsNullOrWhiteSpace(content))
+			pedido.CodigoRastreio = ExtrairStringFrenet(envio, "TrackingNumber", "trackingNumber", "Code", "code")
+				?? pedido.CodigoRastreio;
+			pedido.UrlRastreio = ExtrairStringFrenet(envio, "TrackingUrl", "trackingUrl", "Url", "url")
+				?? pedido.UrlRastreio;
+			pedido.StatusLogistico = ExtrairStringFrenet(envio, "ShipmentStatusDescription", "StatusDescription", "ShipmentStatus", "status")
+				?? pedido.StatusLogistico;
+
+			var postadoEm = ExtrairDateTimeFrenet(envio, "PostedAt", "postedAt", "PostDate");
+			var entregueEm = ExtrairDateTimeFrenet(envio, "DeliveredAt", "deliveredAt", "DeliveryDate");
+			pedido.DataPostagem ??= postadoEm;
+			pedido.DataEntrega ??= entregueEm;
+
+			if (pedido.DataEntrega.HasValue && pedido.Status < StatusPedido.Entregue)
 			{
-				return;
+				pedido.Status = StatusPedido.Entregue;
 			}
-
-			using var document = JsonDocument.Parse(content);
-			var data = document.RootElement.ValueKind == JsonValueKind.Object
-				? document.RootElement
-				: default;
-
-			if (data.ValueKind == JsonValueKind.Undefined || data.ValueKind == JsonValueKind.Null)
+			else if (pedido.DataPostagem.HasValue && pedido.Status < StatusPedido.Enviado)
 			{
-				return;
+				pedido.Status = StatusPedido.Enviado;
 			}
-
-			_logger.LogInformation("Melhor Envio dados normalizados da pesquisa do pedido {PedidoId}: {Body}", pedido.Id, data.GetRawText());
-
-			var tracking = ObterString(data, "tracking")
-				?? ObterString(data, "tracking_code")
-				?? ObterString(data, "tracking_number")
-				?? ObterStringAninhado(data, "tracking", "code")
-				?? ObterStringAninhado(data, "tracking", "number");
-
-			AplicarDadosLogisticosNoPedido(pedido, new MelhorEnvioWebhookDataDTO
-			{
-				Id = ObterString(data, "id"),
-				Protocol = ObterString(data, "protocol"),
-				Status = ObterString(data, "status"),
-				Tracking = tracking,
-				Tracking_Url = ObterString(data, "tracking_url")
-					?? ObterString(data, "trackingLink")
-					?? ObterStringAninhado(data, "tracking", "url")
-					?? MontarTrackingUrl(data, tracking),
-				Generated_At = ObterDateTimeOffset(data, "generated_at"),
-				Posted_At = ObterDateTimeOffset(data, "posted_at"),
-				Delivered_At = ObterDateTimeOffset(data, "delivered_at")
-			});
 		}
 
 		private async Task SalvarPedidoLogisticoAsync(Pedido pedido)
 		{
+			var statusAnterior = pedido.Status;
 			await _unitOfWork.Pedidos.AtualizarAsync(pedido);
 			await _unitOfWork.SalvarMudancasAsync();
+
+			if (pedido.Status != statusAnterior)
+			{
+				_ = _notificacaoService.EnviarEmailAlteracaoStatusAsync(pedido);
+			}
 		}
 
-		private static bool PedidoJaTemEtiquetaGerada(Pedido pedido)
-		{
-			return pedido.DataEtiquetaGerada.HasValue ||
-				!string.IsNullOrWhiteSpace(pedido.UrlEtiqueta) ||
-				string.Equals(pedido.StatusLogistico, "generated", StringComparison.OrdinalIgnoreCase) ||
-				string.Equals(pedido.StatusLogistico, "posted", StringComparison.OrdinalIgnoreCase) ||
-				string.Equals(pedido.StatusLogistico, "delivered", StringComparison.OrdinalIgnoreCase);
-		}
-
-		private async Task TentarAtualizarUrlEtiquetaAsync(
+		private async Task TentarAtualizarEtiquetaFrenetAsync(
 			HttpClient client,
 			string baseUrl,
 			Pedido pedido,
-			Dictionary<string, object?> payloadPedido,
 			CancellationToken cancellationToken)
 		{
-			if (!string.IsNullOrWhiteSpace(pedido.UrlEtiqueta))
+			if (string.IsNullOrWhiteSpace(pedido.IntegracaoFretePedidoId) || !string.IsNullOrWhiteSpace(pedido.UrlEtiqueta))
 			{
 				return;
 			}
 
 			try
 			{
-				var respostaImpressao = await EnviarAsync(client, HttpMethod.Post, $"{baseUrl}/api/v2/me/shipment/print", payloadPedido, cancellationToken);
-				pedido.UrlEtiqueta = ObterString(respostaImpressao, "url") ?? ObterString(respostaImpressao, "path");
+				var respostaEtiqueta = await EnviarFrenetAsync(
+					client,
+					HttpMethod.Get,
+					$"{baseUrl}/v1/shipments/{Uri.EscapeDataString(pedido.IntegracaoFretePedidoId)}/label",
+					null,
+					cancellationToken);
+
+				pedido.UrlEtiqueta = ExtrairStringFrenet(respostaEtiqueta, "LabelUrl", "labelUrl", "Url", "url", "PdfUrl", "pdfUrl")
+					?? pedido.UrlEtiqueta;
 			}
 			catch (Exception ex)
 			{
-				_logger.LogWarning(ex, "Não foi possível obter a URL de impressão da etiqueta do pedido {PedidoId}.", pedido.Id);
+				_logger.LogWarning(ex, "Não foi possível obter a etiqueta Frenet do pedido {PedidoId}.", pedido.Id);
 			}
 		}
 
-		private void AplicarDadosLogisticosNoPedido(Pedido pedido, MelhorEnvioWebhookDataDTO data)
+		private void ValidarTokenWebhookFrenet(IReadOnlyDictionary<string, string?> headers)
 		{
-			pedido.MelhorEnvioPedidoId = data.Id ?? pedido.MelhorEnvioPedidoId;
-			pedido.MelhorEnvioProtocolo = data.Protocol ?? pedido.MelhorEnvioProtocolo;
-			pedido.StatusLogistico = data.Status ?? pedido.StatusLogistico;
-			pedido.CodigoRastreio = data.Tracking ?? pedido.CodigoRastreio;
-			pedido.UrlRastreio = data.Tracking_Url ?? pedido.UrlRastreio;
+			var tokenName = _configuration["Frenet:WebhookTokenName"];
+			var tokenValue = _configuration["Frenet:WebhookTokenValue"];
 
-			if (data.Generated_At.HasValue)
-			{
-				pedido.DataEtiquetaGerada = data.Generated_At.Value.UtcDateTime;
-			}
-			if (data.Posted_At.HasValue)
-			{
-				pedido.DataPostagem = data.Posted_At.Value.UtcDateTime;
-			}
-			if (data.Delivered_At.HasValue)
-			{
-				pedido.DataEntrega = data.Delivered_At.Value.UtcDateTime;
-			}
-
-			var statusAnterior = pedido.Status;
-			if (string.Equals(data.Status, "posted", StringComparison.OrdinalIgnoreCase))
-			{
-				pedido.Status = StatusPedido.Enviado;
-			}
-			else if (string.Equals(data.Status, "delivered", StringComparison.OrdinalIgnoreCase))
-			{
-				pedido.Status = StatusPedido.Entregue;
-			}
-
-			if (pedido.Status != statusAnterior)
-			{
-				pedido.DataAtualizacao = DateTime.UtcNow;
-				_ = _notificacaoService.EnviarEmailAlteracaoStatusAsync(pedido);
-			}
-		}
-
-		private void ValidarAssinatura(string rawBody, string? signature)
-		{
-			var secret = _configuration["MelhorEnvio:ClientSecret"];
-			if (string.IsNullOrWhiteSpace(secret) || string.IsNullOrWhiteSpace(signature))
+			if (string.IsNullOrWhiteSpace(tokenName) || string.IsNullOrWhiteSpace(tokenValue))
 			{
 				return;
 			}
 
-			using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
-			var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(rawBody));
-			var calculada = Convert.ToBase64String(hash);
-
-			if (!string.Equals(calculada, signature, StringComparison.Ordinal))
+			headers.TryGetValue(tokenName, out var valorRecebido);
+			if (!string.Equals(valorRecebido, tokenValue, StringComparison.Ordinal))
 			{
-				throw new InvalidOperationException("Assinatura do webhook do Melhor Envio inválida.");
+				throw new InvalidOperationException("Token do webhook Frenet inválido.");
 			}
 		}
 
-		private static string? ObterString(JsonElement element, string propertyName)
+		private static DateTime? ParseDataEventoFrenet(string? valor)
 		{
-			if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind == JsonValueKind.Null)
+			if (string.IsNullOrWhiteSpace(valor))
 			{
 				return null;
 			}
 
-			return property.ToString();
-		}
-
-		private static DateTimeOffset? ObterDateTimeOffset(JsonElement element, string propertyName)
-		{
-			if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind == JsonValueKind.Null)
+			if (DateTime.TryParseExact(
+				valor,
+				"dd/MM/yyyy HH:mm",
+				CultureInfo.InvariantCulture,
+				DateTimeStyles.AssumeLocal,
+				out var data))
 			{
-				return null;
-			}
-
-			if (property.ValueKind == JsonValueKind.String &&
-				DateTimeOffset.TryParse(property.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var value))
-			{
-				return value;
+				return data.ToUniversalTime();
 			}
 
 			return null;
 		}
 
-		private static string? ObterStringAninhado(JsonElement element, string parentPropertyName, string childPropertyName)
+		private Dictionary<string, object?> MontarPayloadFrenetOneclick(Pedido pedido)
 		{
-			if (!element.TryGetProperty(parentPropertyName, out var parent) ||
-				parent.ValueKind != JsonValueKind.Object ||
-				!parent.TryGetProperty(childPropertyName, out var child) ||
-				child.ValueKind == JsonValueKind.Null)
-			{
-				return null;
-			}
+			var destinatarioNome = string.Equals(pedido.TipoEntrega, "Escola", StringComparison.OrdinalIgnoreCase)
+				? pedido.Escola?.Nome ?? pedido.NomeEntrega
+				: pedido.NomeEntrega;
 
-			return child.ToString();
+			var volumes = new[]
+			{
+				new Dictionary<string, object?>
+				{
+					["Height"] = pedido.Itens.Max(item => NormalizarDimensao(item.ProdutoTamanho?.Altura)),
+					["Width"] = pedido.Itens.Max(item => NormalizarDimensao(item.ProdutoTamanho?.Largura)),
+					["Length"] = Math.Max(1, pedido.Itens.Sum(item => NormalizarDimensao(item.ProdutoTamanho?.Profundidade))),
+					["Weight"] = decimal.Round(pedido.Itens.Sum(item =>
+					{
+						var pesoUnitario = item.ProdutoTamanho != null && item.ProdutoTamanho.Peso > 0
+							? item.ProdutoTamanho.Peso
+							: 0.1d;
+						return (decimal)(pesoUnitario * item.Quantidade);
+					}), 3)
+				}
+			};
+
+			var products = pedido.Itens.Select(item => new Dictionary<string, object?>
+			{
+				["Sku"] = item.ProdutoId.ToString(),
+				["Name"] = item.Produto?.Nome ?? "Produto",
+				["Quantity"] = item.Quantidade,
+				["UnitPrice"] = decimal.Round(item.PrecoUnitario, 2)
+			}).ToList();
+
+			return new Dictionary<string, object?>
+			{
+				["OrderId"] = pedido.NumeroPedido,
+				["RecipientName"] = destinatarioNome,
+				["RecipientEmail"] = pedido.Cliente?.Email ?? string.Empty,
+				["RecipientPhone"] = LimparNumero(pedido.TelefoneEntrega),
+				["RecipientZipCode"] = LimparNumero(pedido.CepEntrega),
+				["RecipientAddress"] = pedido.LogradouroEntrega,
+				["RecipientAddressNumber"] = pedido.NumeroEntrega,
+				["RecipientAddressComplement"] = pedido.ComplementoEntrega,
+				["RecipientNeighborhood"] = pedido.BairroEntrega,
+				["RecipientCity"] = pedido.CidadeEntrega,
+				["RecipientState"] = pedido.EstadoEntrega,
+				["ServiceCode"] = pedido.CodigoServicoFrete,
+				["InvoiceValue"] = decimal.Round(pedido.ValorSubtotal, 2),
+				["Volumes"] = volumes,
+				["Products"] = products
+			};
 		}
 
-		private static string? MontarTrackingUrl(JsonElement element, string? trackingCode)
+		private static string? ExtrairStringFrenet(JsonElement element, params string[] propertyNames)
 		{
-			if (string.IsNullOrWhiteSpace(trackingCode))
+			foreach (var propertyName in propertyNames)
 			{
-				return null;
+				if (element.ValueKind == JsonValueKind.Object &&
+					element.TryGetProperty(propertyName, out var property) &&
+					property.ValueKind != JsonValueKind.Null &&
+					!string.IsNullOrWhiteSpace(property.ToString()))
+				{
+					return property.ToString();
+				}
 			}
 
-			var trackingBaseUrl = ObterStringAninhado(element, "service", "tracking_link")
-				?? ObterStringAninhadoComDoisNiveis(element, "service", "company", "tracking_link");
-
-			if (string.IsNullOrWhiteSpace(trackingBaseUrl))
+			if (element.ValueKind == JsonValueKind.Object)
 			{
-				return null;
+				foreach (var property in element.EnumerateObject())
+				{
+					if (property.Value.ValueKind == JsonValueKind.Object || property.Value.ValueKind == JsonValueKind.Array)
+					{
+						var nested = ExtrairStringFrenet(property.Value, propertyNames);
+						if (!string.IsNullOrWhiteSpace(nested))
+						{
+							return nested;
+						}
+					}
+				}
+			}
+			else if (element.ValueKind == JsonValueKind.Array)
+			{
+				foreach (var item in element.EnumerateArray())
+				{
+					var nested = ExtrairStringFrenet(item, propertyNames);
+					if (!string.IsNullOrWhiteSpace(nested))
+					{
+						return nested;
+					}
+				}
 			}
 
-			return $"{trackingBaseUrl.TrimEnd('/')}/{Uri.EscapeDataString(trackingCode)}";
+			return null;
 		}
 
-		private static string? ObterStringAninhadoComDoisNiveis(JsonElement element, string parentPropertyName, string middlePropertyName, string childPropertyName)
+		private static DateTime? ExtrairDateTimeFrenet(JsonElement element, params string[] propertyNames)
 		{
-			if (!element.TryGetProperty(parentPropertyName, out var parent) ||
-				parent.ValueKind != JsonValueKind.Object ||
-				!parent.TryGetProperty(middlePropertyName, out var middle) ||
-				middle.ValueKind != JsonValueKind.Object ||
-				!middle.TryGetProperty(childPropertyName, out var child) ||
-				child.ValueKind == JsonValueKind.Null)
+			var valor = ExtrairStringFrenet(element, propertyNames);
+			if (string.IsNullOrWhiteSpace(valor))
 			{
 				return null;
 			}
 
-			return child.ToString();
+			if (DateTimeOffset.TryParse(valor, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var offset))
+			{
+				return offset.UtcDateTime;
+			}
+
+			if (DateTime.TryParse(valor, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dateTime))
+			{
+				return dateTime.ToUniversalTime();
+			}
+
+			return null;
 		}
 
 		private static int NormalizarDimensao(double? valor)
@@ -620,23 +554,6 @@ namespace LojaVirtual.Aplicacao.Services
 		private static string LimparNumero(string? valor)
 		{
 			return new string((valor ?? string.Empty).Where(char.IsDigit).ToArray());
-		}
-
-		private sealed class RemetenteMelhorEnvio
-		{
-			public string Nome { get; set; } = string.Empty;
-			public string Telefone { get; set; } = string.Empty;
-			public string Email { get; set; } = string.Empty;
-			public string Documento { get; set; } = string.Empty;
-			public string InscricaoEstadual { get; set; } = string.Empty;
-			public string Logradouro { get; set; } = string.Empty;
-			public string Numero { get; set; } = string.Empty;
-			public string Complemento { get; set; } = string.Empty;
-			public string Bairro { get; set; } = string.Empty;
-			public string Cidade { get; set; } = string.Empty;
-			public string Estado { get; set; } = string.Empty;
-			public string Cep { get; set; } = string.Empty;
-			public bool NaoComercial { get; set; }
 		}
 	}
 }

@@ -97,9 +97,9 @@ import { ResumoPedido, StatusPedido } from '../../models/pedido.model';
                   <button class="btn btn-primary btn-sm" (click)="verDetalhes(pedido.id)">
                     <i class="bi bi-eye me-1"></i>Ver Detalhes
                   </button>
-                  <!-- Botão de refazer pagamento para pedidos em AguardandoPagamento -->
+                  <!-- Botão de refazer pagamento para pedidos pendentes ou aguardando pagamento -->
                   <button 
-                    *ngIf="pedido.status === 1"
+                    *ngIf="pedido.status === 0 || pedido.status === 1"
                     class="btn btn-warning btn-sm ms-2" 
                     (click)="retentarPagamento(pedido.id, pedido.valorTotal, pedido.numeroPedido)"
                   >

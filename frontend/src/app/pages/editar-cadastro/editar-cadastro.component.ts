@@ -4,6 +4,7 @@ import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ClienteService } from '../../services/cliente.service';
 import { AlertService } from '../../services/alert.service';
+import { CepService } from '../../services/cep.service';
 import { Cliente } from '../../models/cliente.model';
 
 @Component({
@@ -138,15 +139,20 @@ import { Cliente } from '../../models/cliente.model';
                 <div class="row">
                   <div class="col-md-3 mb-3">
                     <label class="form-label">CEP</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      [(ngModel)]="dados.cep" 
-                      name="cep"
-                      placeholder="00000-000"
-                      (input)="aoDigitarCep($event)"
-                      (blur)="buscarCep()"
-                    >
+                    <div class="input-group">
+                      <input 
+                        type="text" 
+                        class="form-control" 
+                        [(ngModel)]="dados.cep" 
+                        name="cep"
+                        placeholder="00000-000"
+                        (input)="aoDigitarCep($event)"
+                        (blur)="buscarCep()"
+                      >
+                      <span class="input-group-text" *ngIf="buscandoCep">
+                        <span class="spinner-border spinner-border-sm cep-spinner" role="status" aria-hidden="true"></span>
+                      </span>
+                    </div>
                   </div>
                   <div class="col-md-9 mb-3">
                     <label class="form-label">Logradouro</label>
@@ -284,6 +290,11 @@ import { Cliente } from '../../models/cliente.model';
       width: 50px;
       height: 50px;
     }
+
+    .cep-spinner {
+      width: 0.8rem;
+      height: 0.8rem;
+    }
   `]
 })
 export class EditarCadastroComponent implements OnInit {
@@ -305,12 +316,15 @@ export class EditarCadastroComponent implements OnInit {
 
   carregando = true;
   processando = false;
+  buscandoCep = false;
   tentouEnviar = false;
   errosValidacao: string[] = [];
+  private ultimoCepConsultado = '';
 
   constructor(
     private clienteService: ClienteService,
     private alertService: AlertService,
+    private cepService: CepService,
     private router: Router
   ) {}
 
@@ -406,8 +420,26 @@ export class EditarCadastroComponent implements OnInit {
   }
 
   buscarCep(): void {
-    // Aqui você pode integrar com uma API de CEP se desejar
-    console.log('Buscar CEP:', this.dados.cep);
+    const cepLimpo = (this.dados.cep || '').replace(/\D/g, '');
+    if (cepLimpo.length !== 8 || cepLimpo === this.ultimoCepConsultado) {
+      return;
+    }
+
+    this.buscandoCep = true;
+    this.cepService.consultarCep(cepLimpo).subscribe({
+      next: (endereco) => {
+        this.ultimoCepConsultado = cepLimpo;
+        this.dados.logradouro = endereco.street || this.dados.logradouro;
+        this.dados.bairro = endereco.neighborhood || this.dados.bairro;
+        this.dados.cidade = endereco.city || this.dados.cidade;
+        this.dados.estado = endereco.state || this.dados.estado;
+        this.buscandoCep = false;
+      },
+      error: () => {
+        this.buscandoCep = false;
+        this.alertService.warning('CEP não encontrado', 'Não foi possível localizar esse CEP. Confira o número informado.');
+      }
+    });
   }
 
   formatarCpf(valor: string): string {
@@ -453,5 +485,9 @@ export class EditarCadastroComponent implements OnInit {
     const formatado = this.formatarCep(valor);
     this.dados.cep = formatado;
     event.target.value = formatado;
+    const cepLimpo = formatado.replace(/\D/g, '');
+    if (cepLimpo.length === 8) {
+      this.buscarCep();
+    }
   }
 }

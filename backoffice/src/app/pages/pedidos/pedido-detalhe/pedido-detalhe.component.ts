@@ -268,12 +268,12 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
                   <span class="text-muted">{{ pedido.codigoServicoFrete || 'N/A' }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                  <span>Pedido Melhor Envio</span>
-                  <span class="text-muted">{{ pedido.melhorEnvioPedidoId || 'N/A' }}</span>
+                  <span>ID do envio</span>
+                  <span class="text-muted">{{ pedido.integracaoFretePedidoId || 'N/A' }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                  <span>Protocolo</span>
-                  <span class="text-muted">{{ pedido.melhorEnvioProtocolo || 'N/A' }}</span>
+                  <span>Protocolo da integração</span>
+                  <span class="text-muted">{{ pedido.integracaoFreteProtocolo || 'N/A' }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                   <span>Código de rastreio</span>
@@ -319,7 +319,7 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
                     type="button"
                     class="btn btn-outline-primary btn-sm"
                     (click)="sincronizarRastreio()"
-                    [disabled]="sincronizandoRastreio || !pedido.melhorEnvioPedidoId">
+                    [disabled]="sincronizandoRastreio || !pedido.integracaoFretePedidoId">
                     <span *ngIf="!sincronizandoRastreio"><i class="bi bi-arrow-repeat me-1"></i>Sincronizar Rastreio</span>
                     <span *ngIf="sincronizandoRastreio"><span class="spinner-border spinner-border-sm me-1"></span>Sincronizando...</span>
                   </button>
@@ -669,3 +669,4 @@ export class PedidoDetalheComponent implements OnInit {
     this.itensPaginados = this.pedido.itens.slice(inicio, fim);
   }
 }
+

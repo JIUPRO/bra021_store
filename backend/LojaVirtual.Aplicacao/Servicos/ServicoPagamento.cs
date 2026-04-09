@@ -138,6 +138,12 @@ namespace LojaVirtual.Aplicacao.Servicos
 
 				// Registrar método de pagamento no pedido
 				pedido.MetodoPagamento = request.MetodoPagamento;
+				if (pedido.Status == StatusPedido.Pendente)
+				{
+					pedido.Status = StatusPedido.AguardandoPagamento;
+					await _unitOfWork.Pedidos.AtualizarAsync(pedido);
+					await _unitOfWork.SalvarMudancasAsync();
+				}
 
 				// Criar payload para Mercado Pago
 				var payloadDict = new Dictionary<string, object>
@@ -307,13 +313,14 @@ namespace LojaVirtual.Aplicacao.Servicos
 					_logger.LogError("❌ Erro na API Mercado Pago: {StatusCode} - {Erro} - {Response}",
 						response.StatusCode, codigoErro, responseBody);
 
-					// IMPORTANTE: Manter pedido em "AguardandoPagamento" em caso de erro
-					if (pedido.Status == StatusPedido.AguardandoPagamento || pedido.Status == StatusPedido.Pendente)
+					// IMPORTANTE: manter pedido como aguardando pagamento em caso de erro
+					if (pedido.Status == StatusPedido.Pendente)
 					{
-						// Apenas atualiza se estiver em estado inicial
-						await _unitOfWork.Pedidos.AtualizarAsync(pedido);
-						await _unitOfWork.SalvarMudancasAsync();
+						pedido.Status = StatusPedido.AguardandoPagamento;
 					}
+
+					await _unitOfWork.Pedidos.AtualizarAsync(pedido);
+					await _unitOfWork.SalvarMudancasAsync();
 
 					return new PagamentoResponseDTO
 					{
@@ -326,6 +333,22 @@ namespace LojaVirtual.Aplicacao.Servicos
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "❌ Erro ao criar pagamento para pedido {PedidoId}", request.PedidoId);
+				try
+				{
+					var pedido = await _unitOfWork.Pedidos.ObterComItensAsync(request.PedidoId);
+					if (pedido != null && pedido.Status == StatusPedido.Pendente)
+					{
+						pedido.Status = StatusPedido.AguardandoPagamento;
+						pedido.MetodoPagamento = request.MetodoPagamento;
+						await _unitOfWork.Pedidos.AtualizarAsync(pedido);
+						await _unitOfWork.SalvarMudancasAsync();
+					}
+				}
+				catch (Exception persistEx)
+				{
+					_logger.LogWarning(persistEx, "⚠️ Não foi possível marcar o pedido {PedidoId} como aguardando pagamento após falha.", request.PedidoId);
+				}
+
 				return new PagamentoResponseDTO
 				{
 					Sucesso = false,

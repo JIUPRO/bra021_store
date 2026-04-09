@@ -47,8 +47,8 @@ namespace LojaVirtual.API.Controllers
 		}
 
 		[AllowAnonymous]
-		[HttpPost("melhor-envio/webhook")]
-		public async Task<IActionResult> WebhookMelhorEnvio(CancellationToken cancellationToken)
+		[HttpPost("frenet/webhook")]
+		public async Task<IActionResult> WebhookFrenet(CancellationToken cancellationToken)
 		{
 			try
 			{
@@ -57,8 +57,8 @@ namespace LojaVirtual.API.Controllers
 				var body = await reader.ReadToEndAsync(cancellationToken);
 				Request.Body.Position = 0;
 
-				var signature = Request.Headers["X-ME-Signature"].FirstOrDefault();
-				await _logisticaService.ProcessarWebhookAsync(body, signature, cancellationToken);
+				var headers = Request.Headers.ToDictionary(h => h.Key, h => (string?)h.Value.FirstOrDefault(), StringComparer.OrdinalIgnoreCase);
+				await _logisticaService.ProcessarWebhookFrenetAsync(body, headers, cancellationToken);
 				return Ok(new { sucesso = true });
 			}
 			catch (Exception ex)
@@ -66,5 +66,6 @@ namespace LojaVirtual.API.Controllers
 				return BadRequest(new { mensagem = ex.Message });
 			}
 		}
+
 	}
 }

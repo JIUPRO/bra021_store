@@ -125,7 +125,7 @@ interface SecaoParametro {
                   <div *ngSwitchCase="'select-frete-provider'">
                     <select class="form-select" [(ngModel)]="parametro.valor" [name]="'valor-' + parametro.id">
                       <option value="Fixo">Fixo</option>
-                      <option value="MelhorEnvio">Melhor Envio</option>
+                      <option value="Frenet">Frenet</option>
                     </select>
                   </div>
 
@@ -611,7 +611,7 @@ export class ParametrosComponent implements OnInit {
   getCampoTipo(parametro: ParametroSistema): string {
     if (parametro.chave === 'TipoEnderecoEntrega') return 'select-tipo-entrega';
     if (parametro.chave === 'FreteProvider') return 'select-frete-provider';
-    if (['FreteHabilitado', 'MelhorEnvioNaoComercial'].includes(parametro.chave) || parametro.tipo === 'Boolean') return 'toggle';
+    if (['FreteHabilitado', 'LogisticaNaoComercial'].includes(parametro.chave) || parametro.tipo === 'Boolean') return 'toggle';
     if (parametro.chave.startsWith('CarrosselImagem')) return 'url';
     if (['MaximoParcelas', 'FretePrazoPreparacaoDias'].includes(parametro.chave) || parametro.tipo === 'Numero') return 'number';
     if (parametro.chave === 'FreteCepOrigem' || parametro.tipo === 'Cep') return 'cep';
@@ -625,18 +625,18 @@ export class ParametrosComponent implements OnInit {
       FreteProvider: 'Provedor de Frete',
       FreteCepOrigem: 'CEP de Origem',
       FretePrazoPreparacaoDias: 'Prazo de Preparação',
-      MelhorEnvioNaoComercial: 'Envio Não Comercial',
-      MelhorEnvioRemetenteNome: 'Nome do Remetente',
-      MelhorEnvioRemetenteTelefone: 'Telefone do Remetente',
-      MelhorEnvioRemetenteEmail: 'Email do Remetente',
-      MelhorEnvioRemetenteDocumento: 'CPF/CNPJ do Remetente',
-      MelhorEnvioRemetenteInscricaoEstadual: 'Inscrição Estadual',
-      MelhorEnvioRemetenteLogradouro: 'Logradouro do Remetente',
-      MelhorEnvioRemetenteNumero: 'Número do Remetente',
-      MelhorEnvioRemetenteComplemento: 'Complemento do Remetente',
-      MelhorEnvioRemetenteBairro: 'Bairro do Remetente',
-      MelhorEnvioRemetenteCidade: 'Cidade do Remetente',
-      MelhorEnvioRemetenteEstado: 'UF do Remetente',
+      LogisticaNaoComercial: 'Envio Não Comercial',
+      LogisticaRemetenteNome: 'Nome do Remetente',
+      LogisticaRemetenteTelefone: 'Telefone do Remetente',
+      LogisticaRemetenteEmail: 'Email do Remetente',
+      LogisticaRemetenteDocumento: 'CPF/CNPJ do Remetente',
+      LogisticaRemetenteInscricaoEstadual: 'Inscrição Estadual',
+      LogisticaRemetenteLogradouro: 'Logradouro do Remetente',
+      LogisticaRemetenteNumero: 'Número do Remetente',
+      LogisticaRemetenteComplemento: 'Complemento do Remetente',
+      LogisticaRemetenteBairro: 'Bairro do Remetente',
+      LogisticaRemetenteCidade: 'Cidade do Remetente',
+      LogisticaRemetenteEstado: 'UF do Remetente',
       EmailAdministrador: 'Email do Administrador',
       MaximoParcelas: 'Máximo de Parcelas',
       CarrosselImagem1: 'Imagem 1 do Carrossel',
@@ -653,10 +653,10 @@ export class ParametrosComponent implements OnInit {
       FreteCepOrigem: '00000-000',
       FretePrazoPreparacaoDias: 'Ex: 2',
       MaximoParcelas: 'Ex: 3',
-      MelhorEnvioRemetenteDocumento: 'CPF ou CNPJ',
-      MelhorEnvioRemetenteTelefone: 'DDD + número',
-      MelhorEnvioRemetenteEstado: 'Ex: SP',
-      MelhorEnvioRemetenteNumero: 'Ex: 123',
+      LogisticaRemetenteDocumento: 'CPF ou CNPJ',
+      LogisticaRemetenteTelefone: 'DDD + número',
+      LogisticaRemetenteEstado: 'Ex: SP',
+      LogisticaRemetenteNumero: 'Ex: 123',
       EmailAdministrador: '[email protected]'
     };
 
@@ -667,7 +667,7 @@ export class ParametrosComponent implements OnInit {
     const nome = secao.toLowerCase();
     if (nome.includes('entrega')) return 'bi-geo-alt';
     if (nome.includes('frete')) return 'bi-truck';
-    if (nome.includes('melhor envio')) return 'bi-box-seam';
+    if (nome.includes('melhor envio') || nome.includes('logística')) return 'bi-box-seam';
     if (nome.includes('pagamento')) return 'bi-credit-card';
     if (nome.includes('home')) return 'bi-images';
     if (nome.includes('email')) return 'bi-envelope';
@@ -678,7 +678,7 @@ export class ParametrosComponent implements OnInit {
     const nome = secao.toLowerCase();
     if (nome.includes('entrega')) return 'Configura como o endereço de entrega é tratado no checkout.';
     if (nome.includes('frete')) return 'Controla a regra de cálculo, origem e prazo adicional da entrega.';
-    if (nome.includes('melhor envio')) return 'Dados do remetente e opções logísticas para geração da etiqueta.';
+    if (nome.includes('melhor envio') || nome.includes('logística')) return 'Dados do remetente e opções logísticas para geração e rastreio.';
     if (nome.includes('pagamento')) return 'Define regras financeiras e de parcelamento da loja.';
     if (nome.includes('home')) return 'Controla imagens e conteúdo visual da página inicial.';
     if (nome.includes('email')) return 'Parâmetros usados em notificações e comunicações.';

@@ -530,11 +530,11 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("MelhorEnvioPedidoId")
+                    b.Property<string>("IntegracaoFretePedidoId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("MelhorEnvioProtocolo")
+                    b.Property<string>("IntegracaoFreteProtocolo")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 

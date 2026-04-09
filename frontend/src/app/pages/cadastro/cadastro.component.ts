@@ -4,6 +4,7 @@ import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ClienteService } from '../../services/cliente.service';
 import { AlertService } from '../../services/alert.service';
+import { CepService } from '../../services/cep.service';
 import { CriarCliente } from '../../models/cliente.model';
 
 @Component({
@@ -172,6 +173,95 @@ import { CriarCliente } from '../../models/cliente.model';
                   </div>
                 </div>
 
+                <h5 class="mt-4 mb-3"><i class="bi bi-map me-2"></i>Endereço</h5>
+
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">CEP</label>
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        class="form-control"
+                        [(ngModel)]="dados.cep"
+                        name="cep"
+                        placeholder="00000-000"
+                        (input)="aoDigitarCep($event)"
+                      (blur)="buscarCep()"
+                    >
+                      <span class="input-group-text" *ngIf="buscandoCep">
+                        <span class="spinner-border spinner-border-sm cep-spinner" role="status" aria-hidden="true"></span>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="col-md-8 mb-3">
+                    <label class="form-label">Logradouro</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      [(ngModel)]="dados.logradouro"
+                      name="logradouro"
+                      placeholder="Rua, Avenida, etc."
+                    >
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Número</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      [(ngModel)]="dados.numero"
+                      name="numero"
+                      placeholder="123"
+                    >
+                  </div>
+                  <div class="col-md-8 mb-3">
+                    <label class="form-label">Complemento</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      [(ngModel)]="dados.complemento"
+                      name="complemento"
+                      placeholder="Apto, Bloco, etc."
+                    >
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Bairro</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      [(ngModel)]="dados.bairro"
+                      name="bairro"
+                      placeholder="Bairro"
+                    >
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Cidade</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      [(ngModel)]="dados.cidade"
+                      name="cidade"
+                      placeholder="Cidade"
+                    >
+                  </div>
+                  <div class="col-md-2 mb-3">
+                    <label class="form-label">UF</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      [(ngModel)]="dados.estado"
+                      name="estado"
+                      placeholder="SP"
+                      maxlength="2"
+                    >
+                  </div>
+                </div>
+
                 <div class="mb-3 form-check">
                   <input type="checkbox" class="form-check-input" id="termos" [(ngModel)]="aceitaTermos" name="termos" required>
                   <label class="form-check-label" for="termos">
@@ -238,6 +328,11 @@ import { CriarCliente } from '../../models/cliente.model';
       border: none;
       border-radius: 16px;
     }
+
+    .cep-spinner {
+      width: 0.8rem;
+      height: 0.8rem;
+    }
   `]
 })
 export class CadastroComponent {
@@ -247,20 +342,30 @@ export class CadastroComponent {
     telefone: '',
     cpf: '',
     dataNascimento: undefined,
-    senha: ''
+    senha: '',
+    cep: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
+    cidade: '',
+    estado: ''
   };
   confirmarSenha = '';
   mostrarSenha = false;
   mostrarConfirmarSenha = false;
   aceitaTermos = false;
   processando = false;
+  buscandoCep = false;
   erro = '';
   tentouEnviar = false;
   errosValidacao: string[] = [];
+  private ultimoCepConsultado = '';
 
   constructor(
     private clienteService: ClienteService,
     private alertService: AlertService,
+    private cepService: CepService,
     private router: Router
   ) {}
 
@@ -366,5 +471,32 @@ export class CadastroComponent {
     const formatado = this.formatarCep(valor);
     this.dados.cep = formatado;
     event.target.value = formatado;
+    const cepLimpo = formatado.replace(/\D/g, '');
+    if (cepLimpo.length === 8) {
+      this.buscarCep();
+    }
+  }
+
+  buscarCep(): void {
+    const cepLimpo = (this.dados.cep || '').replace(/\D/g, '');
+    if (cepLimpo.length !== 8 || cepLimpo === this.ultimoCepConsultado) {
+      return;
+    }
+
+    this.buscandoCep = true;
+    this.cepService.consultarCep(cepLimpo).subscribe({
+      next: (endereco) => {
+        this.ultimoCepConsultado = cepLimpo;
+        this.dados.logradouro = endereco.street || this.dados.logradouro;
+        this.dados.bairro = endereco.neighborhood || this.dados.bairro;
+        this.dados.cidade = endereco.city || this.dados.cidade;
+        this.dados.estado = endereco.state || this.dados.estado;
+        this.buscandoCep = false;
+      },
+      error: () => {
+        this.buscandoCep = false;
+        this.alertService.warning('CEP não encontrado', 'Não foi possível localizar esse CEP. Confira o número informado.');
+      }
+    });
   }
 }

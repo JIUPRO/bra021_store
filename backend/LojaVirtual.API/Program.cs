@@ -173,7 +173,7 @@ using (var scope = app.Services.CreateScope())
 			Id = Guid.NewGuid(),
 			Chave = "FreteProvider",
 			Valor = "Fixo",
-			Descricao = "Define se o checkout usará frete fixo ou integração com Melhor Envio",
+			Descricao = "Define se o checkout usará frete fixo ou integração dinâmica com a transportadora configurada",
 			Secao = "Frete",
 			Tipo = "Lista",
 			DataCriacao = DateTime.UtcNow,
@@ -207,10 +207,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioNaoComercial",
+			Chave = "LogisticaNaoComercial",
 			Valor = "true",
 			Descricao = "Define se a etiqueta será gerada como envio não comercial para testes/sandbox",
-			Secao = "Melhor Envio",
+			Secao = "Logística",
 			Tipo = "Boolean",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -219,10 +219,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteNome",
+			Chave = "LogisticaRemetenteNome",
 			Valor = "",
-			Descricao = "Nome do remetente usado na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Nome do remetente usado na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -231,10 +231,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteTelefone",
+			Chave = "LogisticaRemetenteTelefone",
 			Valor = "",
-			Descricao = "Telefone do remetente usado na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Telefone do remetente usado na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -243,10 +243,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteEmail",
+			Chave = "LogisticaRemetenteEmail",
 			Valor = "",
-			Descricao = "Email do remetente usado na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Email do remetente usado na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -255,10 +255,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteDocumento",
+			Chave = "LogisticaRemetenteDocumento",
 			Valor = "",
-			Descricao = "CPF ou CNPJ do remetente usado na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "CPF ou CNPJ do remetente usado na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -267,10 +267,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteInscricaoEstadual",
+			Chave = "LogisticaRemetenteInscricaoEstadual",
 			Valor = "ISENTO",
-			Descricao = "Inscrição estadual do remetente usada na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Inscrição estadual do remetente usada na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -279,10 +279,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteLogradouro",
+			Chave = "LogisticaRemetenteLogradouro",
 			Valor = "",
-			Descricao = "Logradouro do remetente usado na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Logradouro do remetente usado na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -291,10 +291,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteNumero",
+			Chave = "LogisticaRemetenteNumero",
 			Valor = "",
-			Descricao = "Número do endereço do remetente usado na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Número do endereço do remetente usado na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -303,10 +303,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteComplemento",
+			Chave = "LogisticaRemetenteComplemento",
 			Valor = "",
-			Descricao = "Complemento do endereço do remetente usado na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Complemento do endereço do remetente usado na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -315,10 +315,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteBairro",
+			Chave = "LogisticaRemetenteBairro",
 			Valor = "",
-			Descricao = "Bairro do remetente usado na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Bairro do remetente usado na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -327,10 +327,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteCidade",
+			Chave = "LogisticaRemetenteCidade",
 			Valor = "",
-			Descricao = "Cidade do remetente usada na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "Cidade do remetente usada na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,
@@ -339,10 +339,10 @@ using (var scope = app.Services.CreateScope())
 		new LojaVirtual.Dominio.Entidades.ParametroSistema
 		{
 			Id = Guid.NewGuid(),
-			Chave = "MelhorEnvioRemetenteEstado",
+			Chave = "LogisticaRemetenteEstado",
 			Valor = "",
-			Descricao = "UF do remetente usada na geração da etiqueta do Melhor Envio",
-			Secao = "Melhor Envio",
+			Descricao = "UF do remetente usada na geração da etiqueta",
+			Secao = "Logística",
 			Tipo = "String",
 			DataCriacao = DateTime.UtcNow,
 			DataAtualizacao = DateTime.UtcNow,

@@ -25,8 +25,8 @@ namespace LojaVirtual.Aplicacao.DTOs
 		public string? TransportadoraFrete { get; set; }
 		public string? ServicoFrete { get; set; }
 		public string? CodigoServicoFrete { get; set; }
-		public string? MelhorEnvioPedidoId { get; set; }
-		public string? MelhorEnvioProtocolo { get; set; }
+		public string? IntegracaoFretePedidoId { get; set; }
+		public string? IntegracaoFreteProtocolo { get; set; }
 		public string? CodigoRastreio { get; set; }
 		public string? UrlRastreio { get; set; }
 		public string? UrlEtiqueta { get; set; }

@@ -21,21 +21,21 @@ namespace LojaVirtual.Aplicacao.Services
 
 			alterou |= await GarantirParametroAsync(parametros, "EmailAdministrador", string.Empty, "Email do administrador para receber resumo de pedidos", "Email", "Email");
 			alterou |= await GarantirParametroAsync(parametros, "FreteHabilitado", "false", "Liga ou desliga a rotina de frete configurável no checkout", "Boolean", "Frete");
-			alterou |= await GarantirParametroAsync(parametros, "FreteProvider", "Fixo", "Define se o checkout usará frete fixo ou integração com Melhor Envio", "Lista", "Frete");
+			alterou |= await GarantirParametroAsync(parametros, "FreteProvider", "Fixo", "Define se o checkout usará frete fixo ou integração dinâmica com a transportadora configurada", "Lista", "Frete");
 			alterou |= await GarantirParametroAsync(parametros, "FreteCepOrigem", string.Empty, "CEP de origem usado para cotação dinâmica de frete", "Cep", "Frete");
 			alterou |= await GarantirParametroAsync(parametros, "FretePrazoPreparacaoDias", "0", "Prazo interno em dias para separação, emissão e postagem antes do prazo da transportadora", "Numero", "Frete");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioNaoComercial", "true", "Define se a etiqueta será gerada como envio não comercial para testes/sandbox", "Boolean", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteNome", string.Empty, "Nome do remetente usado na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteTelefone", string.Empty, "Telefone do remetente usado na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteEmail", string.Empty, "Email do remetente usado na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteDocumento", string.Empty, "CPF ou CNPJ do remetente usado na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteInscricaoEstadual", "ISENTO", "Inscrição estadual do remetente usada na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteLogradouro", string.Empty, "Logradouro do remetente usado na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteNumero", string.Empty, "Número do endereço do remetente usado na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteComplemento", string.Empty, "Complemento do endereço do remetente usado na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteBairro", string.Empty, "Bairro do remetente usado na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteCidade", string.Empty, "Cidade do remetente usada na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
-			alterou |= await GarantirParametroAsync(parametros, "MelhorEnvioRemetenteEstado", string.Empty, "UF do remetente usada na geração da etiqueta do Melhor Envio", "String", "Melhor Envio");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaNaoComercial", "true", "Define se a etiqueta será gerada como envio não comercial para testes/sandbox", "Boolean", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteNome", string.Empty, "Nome do remetente usado na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteTelefone", string.Empty, "Telefone do remetente usado na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteEmail", string.Empty, "Email do remetente usado na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteDocumento", string.Empty, "CPF ou CNPJ do remetente usado na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteInscricaoEstadual", "ISENTO", "Inscrição estadual do remetente usada na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteLogradouro", string.Empty, "Logradouro do remetente usado na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteNumero", string.Empty, "Número do endereço do remetente usado na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteComplemento", string.Empty, "Complemento do endereço do remetente usado na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteBairro", string.Empty, "Bairro do remetente usado na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteCidade", string.Empty, "Cidade do remetente usada na geração da etiqueta", "String", "Logística");
+			alterou |= await GarantirParametroAsync(parametros, "LogisticaRemetenteEstado", string.Empty, "UF do remetente usada na geração da etiqueta", "String", "Logística");
 
 			if (alterou)
 			{
