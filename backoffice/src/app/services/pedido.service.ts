@@ -60,6 +60,12 @@ export class PedidoService {
     return this.http.post<any>(`${this.logisticaUrl}/pedidos/${id}/sincronizar-rastreio`, {});
   }
 
+  baixarArquivoEtiqueta(id: string) {
+    return this.http.get(`${this.logisticaUrl}/pedidos/${id}/arquivo-etiqueta`, {
+      responseType: 'blob'
+    });
+  }
+
   cancelarPagamento(pedidoId: string): Observable<any> {
     return this.http.post(`${this.pagamentoUrl}/cancelar/${pedidoId}`, {});
   }

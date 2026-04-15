@@ -495,6 +495,14 @@ namespace LojaVirtual.Infraestrutura.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("ProviderFreteUtilizado")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ProviderLogisticaUtilizado")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("ComplementoEntrega")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");

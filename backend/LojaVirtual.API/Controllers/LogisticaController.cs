@@ -46,6 +46,21 @@ namespace LojaVirtual.API.Controllers
 			}
 		}
 
+		[Authorize]
+		[HttpGet("pedidos/{id}/arquivo-etiqueta")]
+		public async Task<IActionResult> ObterArquivoEtiqueta(Guid id, CancellationToken cancellationToken)
+		{
+			try
+			{
+				var arquivo = await _logisticaService.ObterArquivoEtiquetaAsync(id, cancellationToken);
+				return File(arquivo.Conteudo, arquivo.ContentType, arquivo.NomeArquivo);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new { mensagem = ex.Message });
+			}
+		}
+
 		[AllowAnonymous]
 		[HttpPost("frenet/webhook")]
 		public async Task<IActionResult> WebhookFrenet(CancellationToken cancellationToken)
@@ -59,6 +74,27 @@ namespace LojaVirtual.API.Controllers
 
 				var headers = Request.Headers.ToDictionary(h => h.Key, h => (string?)h.Value.FirstOrDefault(), StringComparer.OrdinalIgnoreCase);
 				await _logisticaService.ProcessarWebhookFrenetAsync(body, headers, cancellationToken);
+				return Ok(new { sucesso = true });
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new { mensagem = ex.Message });
+			}
+		}
+
+		[AllowAnonymous]
+		[HttpPost("melhor-envio/webhook")]
+		public async Task<IActionResult> WebhookMelhorEnvio(CancellationToken cancellationToken)
+		{
+			try
+			{
+				Request.EnableBuffering();
+				using var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true);
+				var body = await reader.ReadToEndAsync(cancellationToken);
+				Request.Body.Position = 0;
+
+				var headers = Request.Headers.ToDictionary(h => h.Key, h => (string?)h.Value.FirstOrDefault(), StringComparer.OrdinalIgnoreCase);
+				await _logisticaService.ProcessarWebhookMelhorEnvioAsync(body, headers, cancellationToken);
 				return Ok(new { sucesso = true });
 			}
 			catch (Exception ex)

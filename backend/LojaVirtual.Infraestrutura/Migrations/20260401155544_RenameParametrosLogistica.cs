@@ -1,9 +1,13 @@
+using LojaVirtual.Infraestrutura.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace LojaVirtual.Infraestrutura.Migrations
 {
+    [DbContext(typeof(LojaDbContext))]
+    [Migration("20260401155544_RenameParametrosLogistica")]
     public partial class RenameParametrosLogistica : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

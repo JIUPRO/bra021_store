@@ -1,3 +1,5 @@
+using System;
+
 namespace LojaVirtual.Aplicacao.DTOs
 {
 	public class GerarEtiquetaResponseDTO
@@ -25,6 +27,13 @@ namespace LojaVirtual.Aplicacao.DTOs
 		public string? Mensagem { get; set; }
 	}
 
+	public class ArquivoEtiquetaDTO
+	{
+		public byte[] Conteudo { get; set; } = Array.Empty<byte>();
+		public string ContentType { get; set; } = "application/pdf";
+		public string NomeArquivo { get; set; } = "etiqueta.pdf";
+	}
+
 	public class FrenetTrackingWebhookDTO
 	{
 		public string? OrderId { get; set; }
@@ -41,5 +50,15 @@ namespace LojaVirtual.Aplicacao.DTOs
 		public string? EventDescription { get; set; }
 		public string? EventLocation { get; set; }
 		public string? EventType { get; set; }
+	}
+
+	public class MelhorEnvioWebhookDTO
+	{
+		public string? Id { get; set; }
+		public string? OrderId { get; set; }
+		public string? Protocol { get; set; }
+		public string? Status { get; set; }
+		public string? Tracking { get; set; }
+		public string? TrackingUrl { get; set; }
 	}
 }

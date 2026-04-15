@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AlertService } from '../../../services/alert.service';
+import { DocumentoService } from '../../../services/documento.service';
 import { PedidoService } from '../../../services/pedido.service';
 import { Pedido, StatusPedido } from '../../../models/pedido.model';
 import { PaginationComponent } from '../../../components/pagination/pagination.component';
@@ -256,6 +257,14 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
                   <span class="text-muted">{{ pedido.statusLogistico || 'N/A' }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
+                  <span>Provider do frete</span>
+                  <span class="text-muted">{{ pedido.providerFreteUtilizado || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Provider da logística</span>
+                  <span class="text-muted">{{ pedido.providerLogisticaUtilizado || 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
                   <span>Transportadora</span>
                   <span class="text-muted">{{ pedido.transportadoraFrete || 'N/A' }}</span>
                 </div>
@@ -283,7 +292,8 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
                   <span>Etiqueta</span>
                   <span class="text-muted">
                     <a *ngIf="pedido.urlEtiqueta" [href]="pedido.urlEtiqueta" target="_blank" rel="noopener">Abrir</a>
-                    <span *ngIf="!pedido.urlEtiqueta">N/A</span>
+                    <span *ngIf="!pedido.urlEtiqueta && usaDownloadEtiquetaBackend()">Disponível via sistema</span>
+                    <span *ngIf="!pedido.urlEtiqueta && !usaDownloadEtiquetaBackend()">N/A</span>
                   </span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
@@ -416,6 +426,7 @@ import { PaginationComponent } from '../../../components/pagination/pagination.c
 })
 export class PedidoDetalheComponent implements OnInit {
   private alertService = inject(AlertService);
+  private documentoService = inject(DocumentoService);
   private pedidoService = inject(PedidoService);
   private route = inject(ActivatedRoute);
 
@@ -562,32 +573,94 @@ export class PedidoDetalheComponent implements OnInit {
   }
 
   podeExecutarAcaoEtiqueta(): boolean {
-    return !!this.pedido?.urlEtiqueta || this.podeGerarEtiqueta();
+    return this.temUrlEtiquetaDisponivel() || this.temEtiquetaDisponivelViaSistema() || this.temEnvioIntegrado() || this.podeGerarEtiqueta();
   }
 
-  temEtiquetaGerada(): boolean {
-    return !!this.pedido?.urlEtiqueta || !!this.pedido?.dataEtiquetaGerada;
+  temUrlEtiquetaDisponivel(): boolean {
+    return !!this.pedido?.urlEtiqueta;
+  }
+
+  temEtiquetaDisponivelViaSistema(): boolean {
+    return this.usaDownloadEtiquetaBackend() && !!this.pedido?.integracaoFretePedidoId;
+  }
+
+  usaDownloadEtiquetaBackend(): boolean {
+    const provider = this.pedido?.providerLogisticaUtilizado || this.pedido?.providerFreteUtilizado;
+    return provider === 'MelhorEnvio';
+  }
+
+  temEnvioIntegrado(): boolean {
+    return !!this.pedido?.integracaoFretePedidoId;
   }
 
   getTextoAcaoEtiqueta(): string {
-    return this.temEtiquetaGerada() ? ' Imprimir Etiqueta' : ' Gerar Etiqueta';
+    if (this.temUrlEtiquetaDisponivel() || this.temEtiquetaDisponivelViaSistema()) {
+      return ' Imprimir Etiqueta';
+    }
+
+    if (this.temEnvioIntegrado()) {
+      return ' Atualizar Etiqueta';
+    }
+
+    return ' Gerar Etiqueta';
   }
 
   getTextoProcessandoEtiqueta(): string {
-    return this.temEtiquetaGerada() ? 'Abrindo...' : 'Gerando...';
+    if (this.temUrlEtiquetaDisponivel() || this.temEtiquetaDisponivelViaSistema()) {
+      return 'Abrindo...';
+    }
+
+    if (this.temEnvioIntegrado()) {
+      return 'Atualizando...';
+    }
+
+    return 'Gerando...';
   }
 
   getIconeAcaoEtiqueta(): string {
-    return this.temEtiquetaGerada() ? 'bi-printer me-1' : 'bi-tag me-1';
+    if (this.temUrlEtiquetaDisponivel() || this.temEtiquetaDisponivelViaSistema()) {
+      return 'bi-printer me-1';
+    }
+
+    if (this.temEnvioIntegrado()) {
+      return 'bi-arrow-repeat me-1';
+    }
+
+    return 'bi-tag me-1';
   }
 
   executarAcaoEtiqueta(): void {
-    if (this.temEtiquetaGerada() && this.pedido?.urlEtiqueta) {
+    if (this.temUrlEtiquetaDisponivel() && this.pedido?.urlEtiqueta) {
       window.open(this.pedido.urlEtiqueta, '_blank', 'noopener');
       return;
     }
 
+    if (this.temEtiquetaDisponivelViaSistema()) {
+      this.baixarEtiquetaViaSistema();
+      return;
+    }
+
     this.gerarEtiqueta();
+  }
+
+  baixarEtiquetaViaSistema(): void {
+    if (!this.pedidoId) {
+      return;
+    }
+
+    this.processandoEtiqueta = true;
+    this.pedidoService.baixarArquivoEtiqueta(this.pedidoId).subscribe({
+      next: (blob) => {
+        const nomeArquivo = `etiqueta_${this.pedido?.numeroPedido || this.pedidoId}.pdf`;
+        this.documentoService.exibirDocumento(blob, nomeArquivo, 'Etiqueta de Envio');
+        this.processandoEtiqueta = false;
+      },
+      error: (err) => {
+        console.error('Erro ao baixar etiqueta', err);
+        this.alertService.error('Erro', err?.error?.mensagem || 'Não foi possível baixar a etiqueta');
+        this.processandoEtiqueta = false;
+      }
+    });
   }
 
   gerarEtiqueta(): void {
@@ -618,8 +691,8 @@ export class PedidoDetalheComponent implements OnInit {
 
     this.sincronizandoRastreio = true;
     this.pedidoService.sincronizarRastreio(this.pedidoId).subscribe({
-      next: () => {
-        this.alertService.success('Sucesso', 'Rastreio sincronizado com sucesso.');
+      next: (response) => {
+        this.alertService.success('Sucesso', response?.mensagem || 'Rastreio sincronizado com sucesso.');
         this.sincronizandoRastreio = false;
         this.carregarPedido();
       },

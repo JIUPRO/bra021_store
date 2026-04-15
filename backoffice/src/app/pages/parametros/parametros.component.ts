@@ -126,6 +126,7 @@ interface SecaoParametro {
                     <select class="form-select" [(ngModel)]="parametro.valor" [name]="'valor-' + parametro.id">
                       <option value="Fixo">Fixo</option>
                       <option value="Frenet">Frenet</option>
+                      <option value="MelhorEnvio">Melhor Envio</option>
                     </select>
                   </div>
 

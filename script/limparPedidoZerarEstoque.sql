@@ -1,7 +1,11 @@
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
 BEGIN TRY
     BEGIN TRANSACTION;
 
-    -- 1. Apaga movimentações de estoque relacionadas a pedidos
+    PRINT '1. Removendo movimentacoes de estoque ligadas a pedidos...';
+
     DELETE ME
     FROM MovimentacoesEstoque ME
     WHERE ME.Referencia IS NOT NULL
@@ -11,16 +15,17 @@ BEGIN TRY
             OR ME.Motivo LIKE 'Cancelamento - Pedido %'
           );
 
-    -- 2. Recalcula o estoque dos tamanhos com base apenas nas movimentações restantes
+    PRINT '2. Recalculando estoque de ProdutoTamanhos...';
+
     ;WITH MovSaldo AS (
         SELECT
             me.ProdutoTamanhoId,
             SUM(
                 CASE
                     WHEN me.Ativo = 0 THEN 0
-                    WHEN me.Tipo IN (1, 4) THEN me.Quantidade      -- Entrada, Devolucao
-                    WHEN me.Tipo = 2 THEN -me.Quantidade           -- Saida
-                    WHEN me.Tipo = 3 THEN 0                        -- Ajuste nao é delta confiável
+                    WHEN me.Tipo IN (1, 4) THEN me.Quantidade
+                    WHEN me.Tipo = 2 THEN -me.Quantidade
+                    WHEN me.Tipo = 3 THEN 0
                     ELSE 0
                 END
             ) AS SaldoMov
@@ -28,22 +33,34 @@ BEGIN TRY
         GROUP BY me.ProdutoTamanhoId
     )
     UPDATE pt
-    SET pt.QuantidadeEstoque = ISNULL(ms.SaldoMov, 0),
+    SET
+        pt.QuantidadeEstoque = ISNULL(ms.SaldoMov, 0),
         pt.DataAtualizacao = GETUTCDATE()
     FROM ProdutoTamanhos pt
     LEFT JOIN MovSaldo ms ON ms.ProdutoTamanhoId = pt.Id;
 
-    -- 3. Apaga itens de pedido
+    PRINT '3. Removendo itens de pedido...';
+
     DELETE FROM ItensPedido;
 
-    -- 4. Apaga pedidos
+    PRINT '4. Removendo pedidos...';
+
     DELETE FROM Pedidos;
 
     COMMIT TRANSACTION;
+
+    PRINT 'LIMPEZA CONCLUIDA COM SUCESSO.';
+
+    SELECT
+        (SELECT COUNT(*) FROM Pedidos) AS TotalPedidos,
+        (SELECT COUNT(*) FROM ItensPedido) AS TotalItensPedido,
+        (SELECT COUNT(*) FROM MovimentacoesEstoque) AS TotalMovimentacoesEstoque,
+        (SELECT COUNT(*) FROM ProdutoTamanhos) AS TotalProdutoTamanhos;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0
         ROLLBACK TRANSACTION;
 
+    PRINT 'ERRO NA LIMPEZA. TRANSACAO DESFEITA.';
     THROW;
 END CATCH;

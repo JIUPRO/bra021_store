@@ -43,6 +43,8 @@ export interface Pedido {
   transportadoraFrete?: string;
   servicoFrete?: string;
   codigoServicoFrete?: string;
+  providerFreteUtilizado?: string;
+  providerLogisticaUtilizado?: string;
   integracaoFretePedidoId?: string;
   integracaoFreteProtocolo?: string;
   codigoRastreio?: string;
@@ -110,6 +112,8 @@ export interface ResumoPedido {
   tipoEntrega?: string;
   transportadoraFrete?: string;
   servicoFrete?: string;
+  providerFreteUtilizado?: string;
+  providerLogisticaUtilizado?: string;
   codigoRastreio?: string;
   statusLogistico?: string;
   dataPostagem?: Date;

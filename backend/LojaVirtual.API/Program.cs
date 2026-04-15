@@ -85,7 +85,12 @@ builder.Services.AddScoped<IEstoqueService, EstoqueService>();
 builder.Services.AddScoped<IEscolaService, EscolaService>();
 builder.Services.AddScoped<IParametroSistemaService, ParametroSistemaService>();
 builder.Services.AddScoped<IFreteService, FreteService>();
+builder.Services.AddScoped<IFreteProvider, FreteFixoProvider>();
+builder.Services.AddScoped<IFreteProvider, FrenetFreteProvider>();
+builder.Services.AddScoped<IFreteProvider, MelhorEnvioFreteProvider>();
 builder.Services.AddScoped<ILogisticaService, LogisticaService>();
+builder.Services.AddScoped<ILogisticaProvider, FrenetLogisticaProvider>();
+builder.Services.AddScoped<ILogisticaProvider, MelhorEnvioLogisticaProvider>();
 builder.Services.AddScoped<AutenticacaoService>();
 builder.Services.AddScoped<RelatorioService>();
 

@@ -23,6 +23,8 @@ namespace LojaVirtual.Dominio.Entidades
 		public string? TransportadoraFrete { get; set; }
 		public string? ServicoFrete { get; set; }
 		public string? CodigoServicoFrete { get; set; }
+		public string? ProviderFreteUtilizado { get; set; }
+		public string? ProviderLogisticaUtilizado { get; set; }
 		public string? IntegracaoFretePedidoId { get; set; }
 		public string? IntegracaoFreteProtocolo { get; set; }
 		public string? CodigoRastreio { get; set; }

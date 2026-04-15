@@ -123,6 +123,8 @@ namespace LojaVirtual.Infraestrutura.Data
 				entity.Property(e => e.TransportadoraFrete).HasMaxLength(100);
 				entity.Property(e => e.ServicoFrete).HasMaxLength(100);
 				entity.Property(e => e.CodigoServicoFrete).HasMaxLength(50);
+				entity.Property(e => e.ProviderFreteUtilizado).HasMaxLength(50);
+				entity.Property(e => e.ProviderLogisticaUtilizado).HasMaxLength(50);
 				entity.Property(e => e.IntegracaoFretePedidoId).HasMaxLength(100);
 				entity.Property(e => e.IntegracaoFreteProtocolo).HasMaxLength(100);
 				entity.Property(e => e.CodigoRastreio).HasMaxLength(100);

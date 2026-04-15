@@ -116,6 +116,8 @@ namespace LojaVirtual.Aplicacao.Services
 					TransportadoraFrete = dto.TransportadoraFrete ?? opcaoFrete.NomeTransportadora,
 					ServicoFrete = dto.NomeServicoFrete ?? opcaoFrete.NomeServico,
 					CodigoServicoFrete = dto.CodigoServicoFrete ?? opcaoFrete.CodigoServico,
+					ProviderFreteUtilizado = opcaoFrete.Provider,
+					ProviderLogisticaUtilizado = EhProviderDinamico(opcaoFrete.Provider) ? opcaoFrete.Provider : null,
 					NomeEntrega = dto.NomeEntrega,
 					TelefoneEntrega = dto.TelefoneEntrega,
 					CepEntrega = dto.CepEntrega,
